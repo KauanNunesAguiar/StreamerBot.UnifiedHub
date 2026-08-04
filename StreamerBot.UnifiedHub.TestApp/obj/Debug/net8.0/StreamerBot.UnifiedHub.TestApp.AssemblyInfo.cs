@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("StreamerBot.UnifiedHub.TestApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+19310efc4aae715d77c6cb5838debb7c94a9a799")]
 [assembly: System.Reflection.AssemblyProductAttribute("StreamerBot.UnifiedHub.TestApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("StreamerBot.UnifiedHub.TestApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

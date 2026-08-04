@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using StreamerBot.UnifiedHub.Core.Models;
 using StreamerBot.UnifiedHub.Core.Services;
@@ -23,11 +24,13 @@ namespace StreamerBot.UnifiedHub.Core
             OAuth = new OAuthListener();
         }
 
+        #region Inicialização e Autenticação
+
         public async Task InitializeAsync()
         {
             Console.WriteLine("[SpotifyHub] Inicializando serviço...");
 
-            // 1. Tenta autenticar em segundo plano se já houver Refresh Token salvo
+            // 1. Tenta autenticar em segundo plano via Refresh Token se houver credenciais salvas
             bool autenticado = await Spotify.InitializeAsync();
             if (autenticado)
             {
@@ -35,7 +38,7 @@ namespace StreamerBot.UnifiedHub.Core
                 return;
             }
 
-            // 2. Abre a página e só retorna quando tudo for validado com sucesso na API
+            // 2. Abre a interface Web e só avança após o fluxo completo e validação do token
             var (clientId, clientSecret, refreshToken) = await OAuth.ExecutarFluxoAutenticacaoEValidarAsync(
                 _config.RedirectUri,
                 _config,
@@ -44,7 +47,6 @@ namespace StreamerBot.UnifiedHub.Core
 
             if (!string.IsNullOrEmpty(refreshToken))
             {
-                // SÓ SALVA NO CONFIG.JSON APÓS A CONFIRMAÇÃO DE SUCESSO REAL
                 _config.ClientId = clientId;
                 _config.ClientSecret = clientSecret;
                 _config.RefreshToken = refreshToken;
@@ -60,27 +62,162 @@ namespace StreamerBot.UnifiedHub.Core
             }
         }
 
-        public async Task AlternarPlayPause()
+        #endregion
+
+        #region Leitura de Informações (Display & Links)
+
+        /// <summary>
+        /// Display Current Spotify Song
+        /// </summary>
+        public async Task<string> ObterMusicaAtualAsync()
         {
-            string atual = await Spotify.GetCurrentlyPlayingAsync();
-            if (atual.Contains("Nenhuma música") || atual.Contains("não autenticado"))
+            return await Spotify.GetCurrentlyPlayingAsync();
+        }
+
+        /// <summary>
+        /// Display Current Spotify Song Link
+        /// </summary>
+        public async Task<string> ObterLinkMusicaAtualAsync()
+        {
+            return await Spotify.GetCurrentlyPlayingLinkAsync();
+        }
+
+        /// <summary>
+        /// Display Last Played Song
+        /// </summary>
+        public async Task<string> ObterUltimaMusicaTocadaAsync()
+        {
+            return await Spotify.GetLastPlayedSongAsync();
+        }
+
+        /// <summary>
+        /// Get next X songs / Display Spotify Request Queue
+        /// </summary>
+        public async Task<List<string>> ObterFilaReproducaoAsync(int quantidade = 5)
+        {
+            return await Spotify.GetQueueAsync(quantidade);
+        }
+
+        /// <summary>
+        /// View and Select Playlists
+        /// </summary>
+        public async Task<List<(string Id, string Name)>> ObterPlaylistsDoUsuarioAsync()
+        {
+            return await Spotify.GetUserPlaylistsAsync();
+        }
+
+        #endregion
+
+        #region Controle do Player (Play, Pause, Skip, Prev, Seek)
+
+        /// <summary>
+        /// Alterna entre Play e Pause dependendo do estado atual
+        /// </summary>
+        public async Task AlternarPlayPauseAsync()
+        {
+            bool estaTocando = await Spotify.IsPlayingAsync();
+
+            if (estaTocando)
             {
-                await Spotify.PlayAsync();
+                await Spotify.PausePlaybackAsync();
             }
             else
             {
-                await Spotify.PauseAsync();
+                await Spotify.ResumePlaybackAsync();
             }
         }
 
-        public async Task ProximaMusica()
+        /// <summary>
+        /// Resume Spotify Player
+        /// </summary>
+        public async Task RetomarPlayerAsync()
+        {
+            await Spotify.ResumePlaybackAsync();
+        }
+
+        /// <summary>
+        /// Pause Spotify Player
+        /// </summary>
+        public async Task PausarPlayerAsync()
+        {
+            await Spotify.PausePlaybackAsync();
+        }
+
+        /// <summary>
+        /// Skip Spotify Song
+        /// </summary>
+        public async Task ProximaMusicaAsync()
         {
             await Spotify.SkipNextAsync();
         }
 
-        public async Task<string> ObterMusicaAtual()
+        /// <summary>
+        /// Play Previous Spotify Song
+        /// </summary>
+        public async Task MusicaAnteriorAsync()
         {
-            return await Spotify.GetCurrentlyPlayingAsync();
+            await Spotify.SkipPreviousAsync();
         }
+
+        /// <summary>
+        /// Restart Current Spotify Song
+        /// </summary>
+        public async Task ReiniciarMusicaAtualAsync()
+        {
+            await Spotify.RestartCurrentSongAsync();
+        }
+
+        #endregion
+
+        #region Fila de Pedidos e Ações de Moderação
+
+        /// <summary>
+        /// Send Spotify Song Request
+        /// </summary>
+        public async Task<bool> PedirMusicaAsync(string trackUriOuUrl)
+        {
+            if (string.IsNullOrWhiteSpace(trackUriOuUrl)) return false;
+            return await Spotify.SendSongRequestAsync(trackUriOuUrl);
+        }
+
+        /// <summary>
+        /// Remove last Song Request
+        /// </summary>
+        public async Task<bool> RemoverUltimoPedidoAsync()
+        {
+            return await Spotify.RemoveLastSongRequestAsync();
+        }
+
+        #endregion
+
+        #region Gerenciamento de Playlists
+
+        /// <summary>
+        /// Play Selected Playlist
+        /// </summary>
+        public async Task TocarPlaylistAsync(string playlistIdOuUri)
+        {
+            if (string.IsNullOrWhiteSpace(playlistIdOuUri)) return;
+            await Spotify.PlayPlaylistAsync(playlistIdOuUri);
+        }
+
+        /// <summary>
+        /// Add Song to Spotify Playlist
+        /// </summary>
+        public async Task<bool> AdicionarMusicaAPlaylistAsync(string playlistId, string trackUriOuUrl = null)
+        {
+            if (string.IsNullOrWhiteSpace(playlistId)) return false;
+            return await Spotify.AddSongToPlaylistAsync(playlistId, trackUriOuUrl);
+        }
+
+        /// <summary>
+        /// Adiciona a música tocando no momento à playlist em execução atual.
+        /// </summary>
+        public async Task<bool> AdicionarMusicaAtualAPlaylistAtualAsync()
+        {
+            return await Spotify.AddCurrentTrackToCurrentPlaylistAsync();
+        }
+
+        #endregion
     }
 }

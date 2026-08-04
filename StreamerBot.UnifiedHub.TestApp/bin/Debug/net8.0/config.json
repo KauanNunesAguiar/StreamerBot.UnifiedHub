@@ -1,6 +1,6 @@
 {
   "spotifyClientId": "4b1b5d63e7624ef4916023d360251577",
   "spotifyClientSecret": "50f796ba7e6f4050a0c0e92d0a9e9139",
-  "spotifyRefreshToken": "AQCvgSwjOBqoZtGeMXeE4axcAQlCWtCUFuVeYUxAEb4rdp2mU-UPOXysdoJ9282814gTX0af5RtDWYdxgRbg0_tpdq-yARKHwfiCdS80MN-Cf04i6un48O8jqa4jj9J_cXM",
+  "spotifyRefreshToken": "AQDbllepX5hAGAu3ZbjNEhixV3_2mE_8rNhiu2UpdbPN9DFUFe4_E5B2xzsfA_awWC5eI0Xv5H8MiqfSa7WvNQVkzv5q10ZstNNwT0efEEyp8KtU5AU8qdwVQm8quPNVEAM",
   "redirectUri": "http://127.0.0.1:8888/callback/"
 }
