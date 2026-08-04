@@ -1,0 +1,10 @@
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\bin\Release\netstandard2.0\StreamerBot.UnifiedHub.deps.json
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\bin\Release\netstandard2.0\StreamerBot.UnifiedHub.dll
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\bin\Release\netstandard2.0\StreamerBot.UnifiedHub.pdb
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\obj\Release\netstandard2.0\StreamerBot.UnifiedHub.csproj.AssemblyReference.cache
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\obj\Release\netstandard2.0\StreamerBot.UnifiedHub.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\obj\Release\netstandard2.0\StreamerBot.UnifiedHub.csproj.CoreCompileInputs.cache
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\obj\Release\netstandard2.0\StreamerBot.UnifiedHub.csproj.Fody.CopyLocal.cache
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\obj\Release\netstandard2.0\StreamerBot.UnifiedHub.csproj.Fody.RuntimeCopyLocal.cache
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\obj\Release\netstandard2.0\StreamerBot.UnifiedHub.dll
+C:\Users\kauan\OneDrive\Documentos\Sources\StreamerBot.UnifiedHub\obj\Release\netstandard2.0\StreamerBot.UnifiedHub.pdb

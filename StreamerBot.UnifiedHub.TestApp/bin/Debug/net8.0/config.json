@@ -1,0 +1,6 @@
+{
+  "spotifyClientId": "4b1b5d63e7624ef4916023d360251577",
+  "spotifyClientSecret": "50f796ba7e6f4050a0c0e92d0a9e9139",
+  "spotifyRefreshToken": "AQCvgSwjOBqoZtGeMXeE4axcAQlCWtCUFuVeYUxAEb4rdp2mU-UPOXysdoJ9282814gTX0af5RtDWYdxgRbg0_tpdq-yARKHwfiCdS80MN-Cf04i6un48O8jqa4jj9J_cXM",
+  "redirectUri": "http://127.0.0.1:8888/callback/"
+}
