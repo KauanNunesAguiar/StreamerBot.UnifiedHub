@@ -1,0 +1,12 @@
+# Diretorios de build .NET
+bin/
+obj/
+
+# Arquivos de configuracao locais e tokens
+*.json
+!appsettings.json
+
+# VS Code e IDEs
+.vscode/
+.vs/
+*.user

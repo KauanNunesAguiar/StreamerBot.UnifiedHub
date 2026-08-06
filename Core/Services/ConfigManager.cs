@@ -1,3 +1,4 @@
+// Core\Services\ConfigManager.cs
 using System;
 using System.IO;
 using Newtonsoft.Json;

@@ -1,3 +1,4 @@
+// Core\Models\SpotifyConfig.cs
 using Newtonsoft.Json;
 
 namespace StreamerBot.UnifiedHub.Core.Models
