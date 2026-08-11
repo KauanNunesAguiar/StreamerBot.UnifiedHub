@@ -16,8 +16,11 @@ namespace StreamerBot.UnifiedHub.Core.Services
             {
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
-                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-                    return true;
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = url,
+                        UseShellExecute = true
+                    });
                 }
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))

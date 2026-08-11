@@ -18,6 +18,7 @@ namespace StreamerBot.UnifiedHub.Core.Abstractions
         public string RawUrl { get; set; } = string.Empty;
         public string Body { get; set; } = string.Empty;
         public Action<string, string> RespondHtml { get; set; } = (html, contentType) => { };
+        public Action<int> RespondStatusCode { get; set; } = statusCode => { };
         public Action<string> Redirect { get; set; } = url => { };
     }
 }

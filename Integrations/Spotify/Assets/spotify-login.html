@@ -1,84 +1,208 @@
 <!DOCTYPE html>
-<html>
+<html lang="pt-BR">
 
 <head>
-    <meta charset="utf-8" />
-    <title>Configuração do Spotify</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações do Spotify - StreamerBot Unified Hub</title>
+    <link rel="icon" href="data:,">
     <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #181818;
+            --input-bg: #282828;
+            --primary: #1DB954;
+            --primary-hover: #1ed760;
+            --text-main: #FFFFFF;
+            --text-sub: #A7A7A7;
+            --error: #E91429;
+            --border: #333333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
         body {
-            font-family: sans-serif;
-            background-color: #121212;
-            color: #fff;
+            background-color: var(--bg-color);
+            color: var(--text-main);
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
+            min-height: 100vh;
+            padding: 20px;
         }
 
-        .card {
-            background: #181818;
-            padding: 30px;
-            border-radius: 8px;
-            width: 320px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        .container {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 40px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .logo-icon {
+            color: var(--primary);
+            font-size: 42px;
+            margin-bottom: 8px;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .header p {
+            color: var(--text-sub);
+            font-size: 14px;
         }
 
         .error {
-            background: #e74c3c;
-            color: #fff;
-            padding: 10px;
-            margin-bottom: 12px;
-            border-radius: 4px;
+            background-color: rgba(233, 20, 41, 0.15);
+            border: 1px solid var(--error);
+            color: #ff6b6b;
+            padding: 12px 16px;
+            border-radius: 8px;
             font-size: 13px;
-            text-align: center;
+            margin-bottom: 20px;
+            line-height: 1.4;
         }
 
-        label {
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            background-color: var(--input-bg);
+            border: 1px solid transparent;
+            border-radius: 6px;
+            color: var(--text-main);
             font-size: 14px;
-            color: #b3b3b3;
+            transition: border-color 0.2s, background-color 0.2s;
         }
 
-        input {
-            width: 100%;
-            padding: 10px;
-            margin: 8px 0 16px 0;
-            background: #282828;
-            border: 1px solid #333;
-            color: #fff;
-            border-radius: 4px;
-            box-sizing: border-box;
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background-color: #333333;
         }
 
-        button {
+        .form-group .help-text {
+            display: block;
+            font-size: 11px;
+            color: var(--text-sub);
+            margin-top: 6px;
+        }
+
+        .btn-submit {
             width: 100%;
-            padding: 12px;
-            background: #1db954;
+            background-color: var(--primary);
+            color: #000000;
             border: none;
-            color: #fff;
-            font-weight: bold;
-            border-radius: 4px;
+            padding: 14px;
+            border-radius: 50px;
+            font-size: 14px;
+            font-weight: 700;
             cursor: pointer;
+            transition: transform 0.1s, background-color 0.2s;
+            margin-top: 10px;
         }
 
-        button:hover {
-            background: #1ed760;
+        .btn-submit:hover {
+            background-color: var(--primary-hover);
+            transform: scale(1.02);
+        }
+
+        .btn-submit:active {
+            transform: scale(0.98);
+        }
+
+        .footer-note {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-sub);
+            line-height: 1.4;
         }
     </style>
 </head>
 
 <body>
-    <div class="card">
-        <h3 style="margin-top:0;">Spotify Setup</h3>
+
+    <div class="container">
+        <div class="header">
+            <div class="logo-icon">🎵</div>
+            <h1>Configurações do Spotify</h1>
+            <p>Integração StreamerBot Unified Hub</p>
+        </div>
+
         {{ERROR_SECTION}}
+
         <form method="POST">
-            <label>Client ID:</label>
-            <input type="text" name="clientId" value="{{CLIENT_ID}}" required />
-            <label>Client Secret:</label>
-            <input type="password" name="clientSecret" value="{{CLIENT_SECRET}}" required />
-            <button type="submit">Conectar</button>
+            <div class="form-group">
+                <label for="clientId">Client ID</label>
+                <input type="text" id="clientId" name="clientId" value="{{CLIENT_ID}}" placeholder="Insira o Client ID"
+                    required autocomplete="off">
+            </div>
+
+            <div class="form-group">
+                <label for="clientSecret">Client Secret</label>
+                <input type="password" id="clientSecret" name="clientSecret" value="{{CLIENT_SECRET}}"
+                    placeholder="Insira o Client Secret" required autocomplete="off">
+                <span class="help-text">Obtenha estas chaves no Spotify Developer Dashboard.</span>
+            </div>
+
+            <button type="submit" class="btn-submit">Salvar e Conectar</button>
         </form>
+
+        <div style="text-align: center; margin-top: 15px;">
+            <!-- Caminho relativo garantindo que caia sob a mesma rota base do servidor -->
+            <a href="cancel" style="color: var(--text-sub); text-decoration: none; font-size: 13px;">Cancelar e voltar
+                ao
+                aplicativo</a>
+        </div>
+
+        <div class="footer-note">
+            Certifique-se de que a <strong>Redirect URI</strong> no Dashboard do Spotify seja:<br>
+            <code>http://127.0.0.1:5000/callback/</code>
+        </div>
     </div>
+
 </body>
 
 </html>
+
+<script>
+    document.querySelector('form').addEventListener('submit', function (e) {
+        const clientIdInput = document.getElementById('clientId');
+        const clientSecretInput = document.getElementById('clientSecret');
+
+        if (clientIdInput) clientIdInput.value = clientIdInput.value.trim();
+        if (clientSecretInput) clientSecretInput.value = clientSecretInput.value.trim();
+    });
+</script>

@@ -62,6 +62,12 @@ namespace StreamerBot.UnifiedHub.Core.Services
                             context.Response.OutputStream.Write(buffer, 0, buffer.Length);
                             context.Response.OutputStream.Close();
                         },
+                        RespondStatusCode = statusCode =>
+                        {
+                            context.Response.StatusCode = statusCode;
+                            context.Response.ContentLength64 = 0;
+                            context.Response.OutputStream.Close();
+                        },
                         Redirect = url =>
                         {
                             context.Response.Redirect(url);
