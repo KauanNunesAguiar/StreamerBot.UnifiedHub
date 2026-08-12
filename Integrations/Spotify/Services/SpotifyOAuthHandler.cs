@@ -1,30 +1,18 @@
-using System;
-using System.IO;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Web;
-using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
-    public class SpotifyOAuthHandler
+    public class SpotifyOAuthHandler(
+        ILocalHttpServer httpServer,
+        IBrowserService browserService,
+        SpotifyAuthService SpotifyAuthService)
     {
-        private readonly ILocalHttpServer _httpServer;
-        private readonly IBrowserService _browserService;
-        private readonly SpotifyService _spotifyService;
-
-        public SpotifyOAuthHandler(
-            ILocalHttpServer httpServer,
-            IBrowserService browserService,
-            SpotifyService spotifyService)
-        {
-            _httpServer = httpServer;
-            _browserService = browserService;
-            _spotifyService = spotifyService;
-        }
+        private readonly ILocalHttpServer _httpServer = httpServer;
+        private readonly IBrowserService _browserService = browserService;
+        private readonly SpotifyAuthService _SpotifyAuthService = SpotifyAuthService;
 
         public async Task<(string? clientId, string? clientSecret, string? refreshToken)> AuthenticateUserAsync(
             SpotifyConfig config,
@@ -126,7 +114,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
                         try
                         {
-                            string refreshToken = await _spotifyService.ExchangeCodeForRefreshTokenAsync(
+                            string refreshToken = await SpotifyAuthService.ExchangeCodeForRefreshTokenAsync(
                                 clientIdSalvo,
                                 clientSecretSalvo,
                                 code,
@@ -150,7 +138,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                             string erroApi = $"Falha ao validar credenciais (Client Secret pode estar incorreto): {ex.Message}";
                             context.RespondHtml(RenderHtmlForm(clientIdSalvo, clientSecretSalvo, erroApi), "text/html; charset=utf-8");
 
-                            await Task.Delay(500);
+                            await Task.Delay(500, cancellationToken);
                             throw new InvalidOperationException(erroApi, ex);
                         }
                     }
@@ -184,22 +172,15 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 .Replace("{{CLIENT_SECRET}}", clientSecret);
         }
 
-        private string LoadEmbeddedResource(string resourceName)
+        private static string LoadEmbeddedResource(string resourceName)
         {
             var assembly = Assembly.GetExecutingAssembly();
-            using (Stream? stream = assembly.GetManifestResourceStream(resourceName))
-            {
-                if (stream == null)
-                    throw new InvalidOperationException($"Recurso embutido '{resourceName}' não encontrado.");
-
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    return reader.ReadToEnd();
-                }
-            }
+            using Stream? stream = assembly.GetManifestResourceStream(resourceName) ?? throw new InvalidOperationException($"Recurso embutido '{resourceName}' não encontrado.");
+            using StreamReader reader = new(stream);
+            return reader.ReadToEnd();
         }
 
-        private async Task<bool> IsClientIdValidAsync(string clientId, string clientSecret)
+        private static async Task<bool> IsClientIdValidAsync(string clientId, string clientSecret)
         {
             try
             {
