@@ -8,11 +8,13 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
     public class SpotifyOAuthHandler(
         ILocalHttpServer httpServer,
         IBrowserService browserService,
-        SpotifyAuthService SpotifyAuthService)
+        SpotifyAuthService spotifyAuthService,
+        HttpClient httpClient)
     {
-        private readonly ILocalHttpServer _httpServer = httpServer;
-        private readonly IBrowserService _browserService = browserService;
-        private readonly SpotifyAuthService _SpotifyAuthService = SpotifyAuthService;
+        private readonly ILocalHttpServer _httpServer = httpServer ?? throw new ArgumentNullException(nameof(httpServer));
+        private readonly IBrowserService _browserService = browserService ?? throw new ArgumentNullException(nameof(browserService));
+        private readonly SpotifyAuthService _spotifyAuthService = spotifyAuthService ?? throw new ArgumentNullException(nameof(spotifyAuthService));
+        private readonly HttpClient _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 
         public async Task<(string? clientId, string? clientSecret, string? refreshToken)> AuthenticateUserAsync(
             SpotifyConfig config,
@@ -31,7 +33,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             string clientIdSalvo = config.ClientId ?? string.Empty;
             string clientSecretSalvo = config.ClientSecret ?? string.Empty;
 
-            // Timeout de 3 minutos para evitar que o app fique travado se a aba for fechada
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
@@ -39,7 +40,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             {
                 while (!linkedCts.Token.IsCancellationRequested)
                 {
-                    // Aguarda a requisição local com suporte ao timeout
                     var waitForRequestTask = _httpServer.WaitForRequestAsync();
                     var completedTask = await Task.WhenAny(waitForRequestTask, Task.Delay(-1, linkedCts.Token));
 
@@ -62,12 +62,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                             </html>";
 
                         context.RespondHtml(htmlCancel, "text/html; charset=utf-8");
-                        await Task.Delay(500); // Dá tempo de enviar a resposta HTTP para o navegador
+                        await Task.Delay(500, cancellationToken);
                         _httpServer.Stop();
                         throw new OperationCanceledException("O usuário cancelou a configuração do Spotify.");
                     }
 
-                    // 1. Envio do formulário (POST)
                     if (context.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
                     {
                         var formData = HttpUtility.ParseQueryString(context.Body ?? string.Empty);
@@ -81,12 +80,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                             continue;
                         }
 
-                        bool isValid = await IsClientIdValidAsync(clientIdSalvo, clientSecretSalvo);
+                        bool isValid = await IsClientIdValidAsync(clientIdSalvo, clientSecretSalvo, cancellationToken);
                         if (!isValid)
                         {
                             string erroClientId = "O Client ID informado é inválido ou não existe no Spotify Developer Dashboard.";
                             context.RespondHtml(RenderHtmlForm(clientIdSalvo, clientSecretSalvo, erroClientId), "text/html; charset=utf-8");
-                            continue; // Permanece no loop sem redirecionar para o Spotify e sem travar o app
+                            continue;
                         }
 
                         string scopes = Uri.EscapeDataString(
@@ -105,8 +104,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                         string authUrl = $"https://accounts.spotify.com/authorize?response_type=code&client_id={clientIdSalvo}&scope={scopes}&redirect_uri={Uri.EscapeDataString(redirectUri)}";
                         context.Redirect(authUrl);
                     }
-
-                    // 2. Callback com o código de autorização
                     else if (context.RawUrl != null && context.RawUrl.Contains("code="))
                     {
                         var query = HttpUtility.ParseQueryString(new Uri("http://127.0.0.1" + context.RawUrl).Query);
@@ -114,7 +111,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
                         try
                         {
-                            string refreshToken = await SpotifyAuthService.ExchangeCodeForRefreshTokenAsync(
+                            string refreshToken = await _spotifyAuthService.ExchangeCodeForRefreshTokenAsync(
                                 clientIdSalvo,
                                 clientSecretSalvo,
                                 code,
@@ -142,8 +139,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                             throw new InvalidOperationException(erroApi, ex);
                         }
                     }
-
-                    // 3. Carregamento inicial (GET)
                     else
                     {
                         context.RespondHtml(RenderHtmlForm(clientIdSalvo, clientSecretSalvo, null), "text/html; charset=utf-8");
@@ -180,35 +175,25 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return reader.ReadToEnd();
         }
 
-        private static async Task<bool> IsClientIdValidAsync(string clientId, string clientSecret)
+        private async Task<bool> IsClientIdValidAsync(string clientId, string clientSecret, CancellationToken cancellationToken = default)
         {
             try
             {
-                using var httpClient = new HttpClient();
-
-                // Prepara o cabeçalho Authorization Basic em Base64 (clientId:clientSecret)
+                var request = new HttpRequestMessage(HttpMethod.Post, "https://accounts.spotify.com/api/token");
                 var authHeader = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
-                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authHeader);
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authHeader);
 
-                var content = new FormUrlEncodedContent(new[]
-                {
-            new KeyValuePair<string, string>("grant_type", "client_credentials")
-        });
+                request.Content = new FormUrlEncodedContent([
+                    new KeyValuePair<string, string>("grant_type", "client_credentials")
+                ]);
 
-                var response = await httpClient.PostAsync("https://accounts.spotify.com/api/token", content);
-                string responseBody = await response.Content.ReadAsStringAsync();
+                var response = await _httpClient.SendAsync(request, cancellationToken);
+                string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
-                // Se retornar erro de client inválido no JSON
-                if (responseBody.Contains("invalid_client"))
-                {
-                    return false;
-                }
-
-                return true;
+                return !responseBody.Contains("invalid_client");
             }
             catch
             {
-                // Caso ocorra timeout ou erro de rede, permite prosseguir para não bloquear
                 return true;
             }
         }

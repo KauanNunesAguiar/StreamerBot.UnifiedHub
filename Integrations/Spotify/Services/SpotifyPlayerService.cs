@@ -1,12 +1,12 @@
 using System.Collections.Concurrent;
-using System.Net.Http.Json;
 using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
-    public class SpotifyService
+    public class SpotifyPlayerService(YouTubeService youtubeService)
     {
+        private readonly YouTubeService _youtubeService = youtubeService ?? throw new ArgumentNullException(nameof(youtubeService));
         private SpotifyClient? _spotifyClient;
         private string _lastTrackUri = string.Empty;
         private readonly ConcurrentBag<string> _canceledTrackUris = [];
@@ -136,7 +136,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
             if (queueResponse?.Queue == null) return upcomingTracks;
 
-            // Converte e pega até o limite solicitado
             foreach (var item in queueResponse.Queue.Take(limit))
                 if (item is FullTrack track) upcomingTracks.Add(MapToTrackInfo(track));
 
@@ -153,7 +152,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             string trackUri = string.Empty;
             string searchKeyword = input.Trim();
 
-            // 1. Identificação do tipo de entrada (Spotify URI/URL, YouTube ou Busca por Nome)
             if (searchKeyword.StartsWith("spotify:track:", StringComparison.OrdinalIgnoreCase) ||
                 searchKeyword.Contains("open.spotify.com/track/", StringComparison.OrdinalIgnoreCase) ||
                 searchKeyword.Contains("open.spotify.com/intl-", StringComparison.OrdinalIgnoreCase))
@@ -163,8 +161,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             else if (searchKeyword.Contains("youtube.com/", StringComparison.OrdinalIgnoreCase) ||
                      searchKeyword.Contains("youtu.be/", StringComparison.OrdinalIgnoreCase))
             {
-                Log($"Link do YouTube detectado. Obtendo título do vídeo...");
-                string? videoTitle = await GetYouTubeVideoTitleAsync(searchKeyword);
+                Log("Link do YouTube detectado. Obtendo título do vídeo...");
+                string? videoTitle = await _youtubeService.GetVideoTitleAsync(searchKeyword);
 
                 if (string.IsNullOrWhiteSpace(videoTitle))
                     throw new Exception("Não foi possível obter o título do vídeo do YouTube.");
@@ -181,15 +179,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             if (string.IsNullOrEmpty(trackUri))
                 throw new Exception("Nenhuma música correspondente foi encontrada no Spotify.");
 
-            // 2. Consulta os detalhes da faixa na API
             string trackId = trackUri.Replace("spotify:track:", "").Trim();
             var trackDetails = await _spotifyClient!.Tracks.Get(trackId)
                 ?? throw new Exception("Não foi possível obter informações detalhadas da música.");
 
-            // 3. Mapeia para o modelo unificado SpotifyTrackInfo usando o método auxiliar reutilizável
             var queueItem = MapToTrackInfo(trackDetails);
-
-            // Preenche as informações de solicitação do usuário corretamente
             queueItem.Request = new SpotifyRequestInfo
             {
                 UserId = userId,
@@ -212,7 +206,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 await _spotifyClient.Player.AddToQueue(new PlayerAddToQueueRequest(trackUri));
                 Log("Comando AddToQueue aceito com sucesso!\n");
 
-                // Registra no nosso histórico local da fila
                 lock (_userRequestedQueue) _userRequestedQueue.Add(queueItem);
             }
             finally
@@ -227,14 +220,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         {
             lock (_userRequestedQueue)
             {
-                // Procura a última música da fila pertencente ao userId (ou qualquer uma se for Mod/Streamer)
                 var itemToRemove = _userRequestedQueue
                     .LastOrDefault(item => isModOrStreamer || item.Request.UserId == userId);
 
                 if (itemToRemove == null)
                     return Task.FromResult((false, (SpotifyTrackInfo?)null, "Você não possui nenhuma música pendente na fila para remover."));
 
-                // Remove da lista ativa e adiciona às canceladas para auto-skip
                 _userRequestedQueue.Remove(itemToRemove);
                 if (!string.IsNullOrEmpty(itemToRemove.Identifiers.Uri))
                     _canceledTrackUris.Add(itemToRemove.Identifiers.Uri);
@@ -274,7 +265,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         {
             string currentTrackUri = track.Uri;
 
-            // Detecta mudança de faixa
             if (currentTrackUri != _lastTrackUri)
             {
                 _lastTrackUri = currentTrackUri;
@@ -298,7 +288,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             }
             else
             {
-                // Atualiza progresso da faixa atual sem redisparar mudança de faixa
                 CurrentTrackInfo.Player.ProgressMs = currentlyPlaying.ProgressMs ?? 0;
                 CurrentTrackInfo.Player.DurationMs = track.DurationMs;
                 CurrentTrackInfo.Player.IsPlaying = currentlyPlaying.IsPlaying;
@@ -316,7 +305,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 CurrentTrackInfo = new SpotifyTrackInfo
                 { Player = new SpotifyPlayerState { IsPlaying = false } };
 
-                // Dispara os eventos informando que o player parou/zerou
                 OnTrackChanged?.Invoke(this, CurrentTrackInfo);
                 OnPlayerUpdated?.Invoke(this, CurrentTrackInfo);
             }
@@ -357,7 +345,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
             string trimmed = input.Trim();
 
-            // 1. Se já for uma URI do formato spotify:track:ID
             if (trimmed.StartsWith("spotify:track:", StringComparison.OrdinalIgnoreCase))
             {
                 string idOnly = trimmed.Replace("spotify:track:", "", StringComparison.OrdinalIgnoreCase)
@@ -365,7 +352,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 return $"spotify:track:{idOnly}";
             }
 
-            // 2. Se for uma URL web (ex: https://open.spotify.com/intl-pt/track/3VHiIVQe8Sc6gtSsTp3pDz?si=...)
             if (Uri.TryCreate(trimmed, UriKind.Absolute, out Uri? uri))
             {
                 var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
@@ -373,7 +359,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
                 if (trackIndex >= 0 && trackIndex + 1 < segments.Length)
                 {
-                    // Pega o segmento após 'track' e remove parâmetros query (?si=...)
                     string trackId = segments[trackIndex + 1].Split('?')[0].Trim();
                     if (!string.IsNullOrEmpty(trackId))
                         return $"spotify:track:{trackId}";
@@ -401,36 +386,17 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return string.Empty;
         }
 
-        private static async Task<string?> GetYouTubeVideoTitleAsync(string youtubeUrl)
-        {
-            try
-            {
-                using var httpClient = new HttpClient();
-                string oembedUrl = $"https://www.youtube.com/oembed?url={Uri.EscapeDataString(youtubeUrl)}&format=json";
-
-                var response = await httpClient.GetFromJsonAsync<YouTubeOEmbedResponse>(oembedUrl);
-                return response?.Title;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
         private static string GenerateProgressBar(long progressMs, long durationMs, int totalBlocks = 20)
         {
             if (durationMs <= 0)
                 return new string('░', totalBlocks) + " 00:00 / 00:00";
 
-            // Calcula a porcentagem de 0.0 a 1.0
             double percent = Math.Clamp((double)progressMs / durationMs, 0.0, 1.0);
             int filledBlocks = (int)Math.Round(percent * totalBlocks);
             int emptyBlocks = totalBlocks - filledBlocks;
 
-            // Constrói a representação visual [██████░░░░░░░░░░░░░░]
             string bar = new string('█', filledBlocks) + new string('░', emptyBlocks);
 
-            // Formata o tempo em MM:SS
             TimeSpan progressTime = TimeSpan.FromMilliseconds(progressMs);
             TimeSpan durationTime = TimeSpan.FromMilliseconds(durationMs);
 
@@ -440,14 +406,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         private void EnsureInitialized()
         {
             if (_spotifyClient == null)
-                throw new InvalidOperationException("O SpotifyClient não foi inicializado no SpotifyService. Utilize o SpotifyAuthService para autenticar e chame SetClient().");
+                throw new InvalidOperationException("O SpotifyClient não foi inicializado no SpotifyPlayerService.");
         }
 
         private static void Log(string message)
         {
-            Console.WriteLine($"[SpotifyService] {message}");
+            Console.WriteLine($"[SpotifyPlayerService] {message}");
         }
-
-        private record YouTubeOEmbedResponse(string Title);
     }
 }
