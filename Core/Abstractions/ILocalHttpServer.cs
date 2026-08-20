@@ -1,7 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace StreamerBot.UnifiedHub.Core.Abstractions
 {
     public interface ILocalHttpServer
