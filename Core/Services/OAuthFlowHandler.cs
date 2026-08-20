@@ -117,7 +117,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
                             string erroApi = _strategy.BuildExchangeErrorMessage(ex);
                             context.RespondHtml(_strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, erroApi), "text/html; charset=utf-8");
 
-                            await Task.Delay(500);
+                            await Task.Delay(500, cancellationToken);
                             throw new InvalidOperationException(erroApi, ex);
                         }
                     }

@@ -1,5 +1,5 @@
-
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using StreamerBot.UnifiedHub.Core.Models;
 
 namespace StreamerBot.UnifiedHub.Core.Extensions

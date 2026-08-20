@@ -15,7 +15,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
         public void Start(string redirectUri)
         {
             _listener = new HttpListener();
-            _listener.Prefixes.Add(redirectUri.EndsWith("/") ? redirectUri : redirectUri + "/");
+            _listener.Prefixes.Add(redirectUri.EndsWith('/') ? redirectUri : redirectUri + "/");
             _listener.Start();
         }
 
@@ -45,7 +45,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
                     {
                         using (var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding))
                         {
-                            body = await reader.ReadToEndAsync();
+                            body = await reader.ReadToEndAsync(cancellationToken);
                         }
                     }
 

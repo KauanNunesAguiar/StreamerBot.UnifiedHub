@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
 
-namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
+namespace StreamerBot.UnifiedHub.Integrations.Youtube.Services
 {
     public class YouTubeService(HttpClient httpClient)
     {

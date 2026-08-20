@@ -4,21 +4,12 @@ using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
-    public class SpotifyOAuthHandler
+    public class SpotifyOAuthHandler(
+        ILocalHttpServer httpServer,
+        IBrowserService browserService)
     {
-        private readonly ILocalHttpServer _httpServer;
-        private readonly IBrowserService _browserService;
-        private readonly SpotifyService _spotifyService;
-
-        public SpotifyOAuthHandler(
-            ILocalHttpServer httpServer,
-            IBrowserService browserService,
-            SpotifyService spotifyService)
-        {
-            _httpServer = httpServer;
-            _browserService = browserService;
-            _spotifyService = spotifyService;
-        }
+        private readonly ILocalHttpServer _httpServer = httpServer;
+        private readonly IBrowserService _browserService = browserService;
 
         public async Task<(string? clientId, string? clientSecret, string? refreshToken)> AuthenticateUserAsync(
             SpotifyConfig config,
@@ -31,7 +22,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 ? "http://127.0.0.1:5000/callback/"
                 : config.RedirectUri;
 
-            var strategy = new SpotifyOAuthStrategy(_spotifyService);
+            var strategy = new SpotifyOAuthStrategy();
             var flowHandler = new OAuthFlowHandler(_httpServer, _browserService, strategy);
 
             var result = await flowHandler.RunAsync(config.ClientId, config.ClientSecret, redirectUri, cancellationToken);
