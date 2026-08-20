@@ -1,5 +1,3 @@
-using System;
-
 namespace StreamerBot.UnifiedHub.Core.Models
 {
     public class OAuthConfig
@@ -10,5 +8,7 @@ namespace StreamerBot.UnifiedHub.Core.Models
         public string AccessToken { get; set; } = string.Empty;
         public string RefreshToken { get; set; } = string.Empty;
         public DateTime TokenExpiration { get; set; }
+
+        public virtual bool IsAuthenticated => !string.IsNullOrWhiteSpace(RefreshToken);
     }
 }

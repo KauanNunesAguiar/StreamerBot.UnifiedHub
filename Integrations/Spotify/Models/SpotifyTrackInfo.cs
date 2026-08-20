@@ -1,5 +1,3 @@
-using System;
-
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
 {
     public class SpotifyTrackInfo
