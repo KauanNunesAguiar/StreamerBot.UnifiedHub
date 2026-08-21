@@ -10,9 +10,9 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         /// Caso contrário (primeiro acesso), abre o painel no navegador.
         /// </summary>
         public async Task<SpotifyClient> EnsureAuthenticatedAsync(
-    SpotifyConfig config,
-    SpotifyOAuthHandler oauthHandler,
-    CancellationToken cancellationToken = default)
+            SpotifyConfig config,
+            SpotifyOAuthHandler oauthHandler,
+            CancellationToken cancellationToken = default)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config), "A configuração do Spotify não pode ser nula.");

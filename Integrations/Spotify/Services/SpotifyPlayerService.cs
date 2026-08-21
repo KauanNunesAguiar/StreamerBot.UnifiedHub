@@ -1,15 +1,15 @@
 using System.Collections.Concurrent;
-using System.Net.Http.Json;
 using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
+using StreamerBot.UnifiedHub.Integrations.Youtube.Services;
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
-    public class SpotifyPlayerService
+    public class SpotifyPlayerService(YouTubeService youTubeService)
     {
         #region Fields
 
-        private static readonly HttpClient HttpClient = new();
+        private readonly YouTubeService _youTubeService = youTubeService ?? throw new ArgumentNullException(nameof(youTubeService));
         private SpotifyClient? _spotifyClient;
         private string _lastTrackUri = string.Empty;
         private readonly ConcurrentDictionary<string, byte> _canceledTrackUris = new();
@@ -197,18 +197,55 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         {
             EnsureInitialized();
 
-            var queueResponse = await _spotifyClient!.Player.GetQueue();
-            var upcomingTracks = new List<SpotifyTrackInfo>();
+            var finalQueue = new List<SpotifyTrackInfo>();
 
-            if (queueResponse?.Queue == null) return upcomingTracks;
-
-            foreach (var item in queueResponse.Queue.Take(limit))
+            // 1. Pega primeiro as músicas pendentes solicitadas pelos usuários
+            lock (_userRequestedQueue)
             {
-                if (item is FullTrack track)
-                    upcomingTracks.Add(MapToTrackInfo(track));
+                finalQueue.AddRange(_userRequestedQueue.Take(limit));
             }
 
-            return upcomingTracks;
+            // 2. Se a fila do usuário já atingiu ou superou o limite solicitado, retorna imediatamente
+            if (finalQueue.Count >= limit)
+            {
+                return finalQueue;
+            }
+
+            int itemsNeeded = limit - finalQueue.Count;
+            var queueResponse = await _spotifyClient!.Player.GetQueue();
+
+            if (queueResponse?.Queue != null && queueResponse.Queue.Count > 0)
+            {
+                // Guardamos as URIs que já temos na fila para evitar duplicatas
+                var existingUris = finalQueue
+                    .Select(x => x.Identifiers?.Uri)
+                    .Where(uri => !string.IsNullOrEmpty(uri))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                // Inclui também a música que está tocando agora no HashSet para evitar que ela apareça na fila
+                if (!string.IsNullOrEmpty(CurrentTrackInfo?.Identifiers?.Uri))
+                {
+                    existingUris.Add(CurrentTrackInfo.Identifiers.Uri);
+                }
+
+                foreach (var item in queueResponse.Queue)
+                {
+                    if (item is FullTrack track)
+                    {
+                        // Ignora se for uma música que já está presente na fila do usuário ou tocando no momento
+                        if (!string.IsNullOrEmpty(track.Uri) && existingUris.Contains(track.Uri))
+                            continue;
+
+                        finalQueue.Add(MapToTrackInfo(track));
+
+                        // Se já preenchemos o limite total desejado, interrompe o loop
+                        if (finalQueue.Count >= limit)
+                            break;
+                    }
+                }
+            }
+
+            return finalQueue;
         }
 
         public async Task<SpotifyTrackInfo> AddToQueueAsync(string input, string userId, string userName)
@@ -232,7 +269,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                      searchKeyword.Contains("youtu.be/", StringComparison.OrdinalIgnoreCase))
             {
                 Log("Link do YouTube detectado. Obtendo título do vídeo...");
-                string? videoTitle = await GetYouTubeVideoTitleAsync(searchKeyword);
+                string? videoTitle = await _youTubeService.GetVideoTitleAsync(searchKeyword);
 
                 if (string.IsNullOrWhiteSpace(videoTitle))
                     throw new Exception("Não foi possível obter o título do vídeo do YouTube.");
@@ -479,20 +516,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return string.Empty;
         }
 
-        private static async Task<string?> GetYouTubeVideoTitleAsync(string youtubeUrl)
-        {
-            try
-            {
-                string oembedUrl = $"https://www.youtube.com/oembed?url={Uri.EscapeDataString(youtubeUrl)}&format=json";
-                var response = await HttpClient.GetFromJsonAsync<YouTubeOEmbedResponse>(oembedUrl);
-                return response?.Title;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
         private static string GenerateProgressBar(long progressMs, long durationMs, int totalBlocks = 20)
         {
             if (durationMs <= 0)
@@ -525,12 +548,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         {
             Console.WriteLine($"[SpotifyService] {message}");
         }
-
-        #endregion
-
-        #region Nested Types
-
-        private record YouTubeOEmbedResponse(string Title);
 
         #endregion
     }

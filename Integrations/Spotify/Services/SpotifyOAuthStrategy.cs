@@ -1,14 +1,11 @@
 using System.Reflection;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Services;
-
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
-    public class SpotifyOAuthStrategy(SpotifyService spotifyService) : IOAuthFlowStrategy
+    public class SpotifyOAuthStrategy : IOAuthFlowStrategy
     {
         private const string LoginHtmlResourceName = "StreamerBot.UnifiedHub.Integrations.Spotify.Assets.spotify-login.html";
-
-        private readonly SpotifyService _spotifyService = spotifyService;
 
         public string InvalidCredentialsMessage =>
             "O Client ID informado é inválido ou não existe no Spotify Developer Dashboard.";
@@ -33,7 +30,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         public async Task<string> ExchangeCodeForRefreshTokenAsync(string clientId, string clientSecret, string code, string redirectUri)
         {
-            return await _spotifyService.ExchangeCodeForRefreshTokenAsync(clientId, clientSecret, code, redirectUri);
+            return await SpotifyAuthService.ExchangeCodeForRefreshTokenAsync(clientId, clientSecret, code, redirectUri);
         }
 
         public string BuildExchangeErrorMessage(Exception ex) =>
@@ -55,29 +52,29 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             });
         }
 
-        public async Task<bool> ValidateCredentialsAsync(string clientId, string clientSecret)
+        public async Task<bool> ValidateCredentialsAsync(string clientId, string clientSecret, CancellationToken cancellationToken = default)
         {
             try
             {
-                using var httpClient = new HttpClient();
+                string authHeader = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
 
-                var authHeader = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}"));
-                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authHeader);
-
-                var content = new FormUrlEncodedContent(
-                [
-                    new KeyValuePair<string, string>("grant_type", "client_credentials")
-                ]);
-
-                var response = await httpClient.PostAsync("https://accounts.spotify.com/api/token", content);
-                string responseBody = await response.Content.ReadAsStringAsync();
-
-                if (responseBody.Contains("invalid_client"))
+                using var request = new HttpRequestMessage(HttpMethod.Post, "https://accounts.spotify.com/api/token")
                 {
-                    return false;
-                }
+                    Content = new FormUrlEncodedContent(
+                    [
+                        new KeyValuePair<string, string>("grant_type", "client_credentials")
+                    ])
+                };
+                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authHeader);
 
-                return true;
+                var response = await SharedHttpClient.Instance.SendAsync(request, cancellationToken);
+                string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+
+                return !responseBody.Contains("invalid_client");
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch
             {
