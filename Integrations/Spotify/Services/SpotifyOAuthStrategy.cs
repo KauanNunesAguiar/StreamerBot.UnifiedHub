@@ -1,14 +1,23 @@
 using System.Reflection;
+using System.Web;
+using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Core.Abstractions;
+using StreamerBot.UnifiedHub.Core.Models;
 using StreamerBot.UnifiedHub.Core.Services;
+using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
+
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
     public class SpotifyOAuthStrategy : IOAuthFlowStrategy
     {
         private const string LoginHtmlResourceName = "StreamerBot.UnifiedHub.Integrations.Spotify.Assets.spotify-login.html";
+        private const string SettingsHtmlResourceName = "StreamerBot.UnifiedHub.Integrations.Spotify.Assets.spotify-settings.html";
+        private List<SpotifyPlaylistInfo>? _cachedPlaylists;
 
         public string InvalidCredentialsMessage =>
             "O Client ID informado é inválido ou não existe no Spotify Developer Dashboard.";
+
+        public bool HasPostAuthStep => true;
 
         public string BuildAuthorizationUrl(string clientId, string redirectUri)
         {
@@ -29,9 +38,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         }
 
         public async Task<string> ExchangeCodeForRefreshTokenAsync(string clientId, string clientSecret, string code, string redirectUri)
-        {
-            return await SpotifyAuthService.ExchangeCodeForRefreshTokenAsync(clientId, clientSecret, code, redirectUri);
-        }
+            => await SpotifyAuthService.ExchangeCodeForRefreshTokenAsync(clientId, clientSecret, code, redirectUri);
 
         public string BuildExchangeErrorMessage(Exception ex) =>
             $"Falha ao validar credenciais (Client Secret pode estar incorreto): {ex.Message}";
@@ -80,6 +87,77 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             {
                 return true;
             }
+        }
+
+        public async Task<string> RenderPostAuthStepHtmlAsync(OAuthResult result, string? error, CancellationToken cancellationToken)
+        {
+            _cachedPlaylists ??= await FetchPlaylistsAsync(result, cancellationToken);
+
+            string template = EmbeddedTemplateRenderer.Load(Assembly.GetExecutingAssembly(), SettingsHtmlResourceName);
+
+            string errorSection = string.IsNullOrEmpty(error) ? string.Empty : $"<div class=\"error\">{error}</div>";
+            string itemsHtml = _cachedPlaylists.Count == 0
+                ? "<p class=\"empty-state\">Nenhuma playlist encontrada na sua conta.</p>"
+                : string.Concat(_cachedPlaylists.Select(BuildPlaylistItemHtml));
+
+            return EmbeddedTemplateRenderer.Render(template, new Dictionary<string, string>
+            {
+                ["{{ERROR_SECTION}}"] = errorSection,
+                ["{{PLAYLIST_ITEMS}}"] = itemsHtml
+            });
+        }
+
+        public Task<string?> ProcessPostAuthStepAsync(OAuthResult result, string formBody, CancellationToken cancellationToken)
+        {
+            var formData = HttpUtility.ParseQueryString(formBody ?? string.Empty);
+            string? playlistId = formData["playlistId"];
+
+            if (string.IsNullOrWhiteSpace(playlistId))
+                return Task.FromResult<string?>("Selecione uma playlist antes de salvar.");
+
+            result.ExtraSettings["PlaylistId"] = playlistId;
+            return Task.FromResult<string?>(null);
+        }
+
+        private static async Task<List<SpotifyPlaylistInfo>> FetchPlaylistsAsync(OAuthResult result, CancellationToken cancellationToken)
+        {
+            var client = await SpotifyAuthService.CreateClientFromRefreshTokenAsync(
+                result.ClientId, result.ClientSecret, result.RefreshToken);
+
+            var playlists = new List<SpotifyPlaylistInfo>();
+            var firstPage = await client.Playlists.CurrentUsers(new PlaylistCurrentUsersRequest { Limit = 50 }, cancellationToken);
+
+            await foreach (var playlist in client.Paginate(firstPage).WithCancellation(cancellationToken))
+            {
+                if (playlist?.Id == null) continue;
+
+                playlists.Add(new SpotifyPlaylistInfo
+                {
+                    Id = playlist.Id,
+                    Name = playlist.Name ?? "(sem nome)",
+                    ImageUrl = playlist.Images?.FirstOrDefault()?.Url ?? string.Empty,
+                    TracksTotal = playlist.Items?.Total ?? 0
+                });
+            }
+
+            return playlists;
+        }
+
+        private static string BuildPlaylistItemHtml(SpotifyPlaylistInfo playlist)
+        {
+            string imageHtml = string.IsNullOrEmpty(playlist.ImageUrl)
+                ? "<div class=\"playlist-thumb-placeholder\">🎵</div>"
+                : $"<img class=\"playlist-thumb\" src=\"{playlist.ImageUrl}\" alt=\"\">";
+
+            return $@"
+                <label class=""playlist-item"">
+                    <input type=""radio"" name=""playlistId"" value=""{playlist.Id}"">
+                    {imageHtml}
+                    <div class=""playlist-info"">
+                        <span class=""playlist-name"">{playlist.Name}</span>
+                        <span class=""playlist-tracks"">{playlist.TracksTotal} faixas</span>
+                    </div>
+                </label>";
         }
     }
 }

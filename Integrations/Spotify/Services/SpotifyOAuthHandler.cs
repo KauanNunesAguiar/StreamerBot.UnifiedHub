@@ -1,4 +1,5 @@
 using StreamerBot.UnifiedHub.Core.Abstractions;
+using StreamerBot.UnifiedHub.Core.Models;
 using StreamerBot.UnifiedHub.Core.Services;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 
@@ -11,7 +12,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         private readonly ILocalHttpServer _localHttpServer = httpServer;
         private readonly IBrowserService _spotifyBrowserService = browserService;
 
-        public async Task<(string? clientId, string? clientSecret, string? refreshToken)> AuthenticateUserAsync(
+        public async Task<OAuthResult> AuthenticateUserAsync(
             SpotifyConfig config,
             CancellationToken cancellationToken = default)
         {
@@ -25,9 +26,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             var strategy = new SpotifyOAuthStrategy();
             var flowHandler = new OAuthFlowHandler(_localHttpServer, _spotifyBrowserService, strategy);
 
-            var result = await flowHandler.RunAsync(config.ClientId, config.ClientSecret, redirectUri, cancellationToken);
-
-            return (result.ClientId, result.ClientSecret, result.RefreshToken);
+            return await flowHandler.RunAsync(config.ClientId, config.ClientSecret, redirectUri, cancellationToken);
         }
     }
 }

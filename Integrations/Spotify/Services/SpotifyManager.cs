@@ -3,12 +3,10 @@ using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
     public class SpotifyManager(
-        SpotifyAuthService authService,
         SpotifyOAuthHandler oauthHandler,
         SpotifyPlayerService playerService,
         SpotifyConfig config)
     {
-        private readonly SpotifyAuthService _authService = authService ?? throw new ArgumentNullException(nameof(authService));
         private readonly SpotifyOAuthHandler _oauthHandler = oauthHandler ?? throw new ArgumentNullException(nameof(oauthHandler));
         private readonly SpotifyPlayerService _playerService = playerService ?? throw new ArgumentNullException(nameof(playerService));
         private readonly SpotifyConfig _config = config ?? throw new ArgumentNullException(nameof(config));
@@ -33,7 +31,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         /// </summary>
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
-            var spotifyClient = await _authService.EnsureAuthenticatedAsync(_config, _oauthHandler, cancellationToken);
+            var spotifyClient = await SpotifyAuthService.EnsureAuthenticatedAsync(_config, _oauthHandler, cancellationToken);
             _playerService.SetClient(spotifyClient);
         }
 
@@ -42,7 +40,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         /// </summary>
         public async Task ReconfigureAsync(CancellationToken cancellationToken = default)
         {
-            var spotifyClient = await _authService.ReconfigureAsync(_config, _oauthHandler, cancellationToken);
+            var spotifyClient = await SpotifyAuthService.ReconfigureAsync(_config, _oauthHandler, cancellationToken);
             _playerService.SetClient(spotifyClient);
         }
 
@@ -72,6 +70,34 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         public List<SpotifyTrackInfo> GetPendingUserQueue()
             => _playerService.GetPendingUserQueue();
+
+        #endregion
+
+        #region Playlist de Lives
+
+        /// <summary>
+        /// Adiciona a música tocando no momento à playlist de lives configurada (SpotifyConfig.PlaylistId).
+        /// </summary>
+        public Task<(bool Success, string Message)> AddCurrentTrackToPlaylistAsync(CancellationToken cancellationToken = default)
+            => _playerService.AddCurrentTrackToPlaylistAsync(_config.PlaylistId, cancellationToken);
+
+        #endregion
+
+        #region Skip / Voteskip
+
+        /// <summary>
+        /// Pula a música atual imediatamente. Restrito a mod/streamer — a checagem de
+        /// permissão fica a cargo de quem chama (mesmo padrão de RemoveLastAddedFromQueueAsync).
+        /// </summary>
+        public Task<(bool Success, string Message)> ForceSkipAsync()
+            => _playerService.ForceSkipAsync();
+
+        /// <summary>
+        /// Registra o voto de um espectador para pular a música atual. Usa SpotifyConfig.VoteSkipThreshold
+        /// como número de votos necessários; quando atingido, a música é pulada automaticamente.
+        /// </summary>
+        public Task<VoteSkipResult> VoteSkipAsync(string userId, CancellationToken cancellationToken = default)
+            => _playerService.RegisterVoteSkipAsync(userId, _config.VoteSkipThreshold, cancellationToken);
 
         #endregion
     }

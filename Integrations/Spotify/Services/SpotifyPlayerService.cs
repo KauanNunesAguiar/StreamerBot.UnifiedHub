@@ -16,6 +16,10 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         private readonly List<SpotifyTrackInfo> _userRequestedQueue = [];
         private readonly SemaphoreSlim _playerLock = new(1, 1);
 
+        // Chave = URI da faixa; Valor = conjunto de userIds que já votaram para pular ESSA faixa.
+        // Como a chave é o URI da música atual, os votos "resetam sozinhos" quando a música muda.
+        private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _voteSkipTracker = new();
+
         #endregion
 
         #region Properties & Events
@@ -187,6 +191,119 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 return "Nenhuma música tocando no momento.";
 
             return GenerateProgressBar(CurrentTrackInfo.Player.ProgressMs, CurrentTrackInfo.Player.DurationMs);
+        }
+
+        /// <summary>
+        /// Pula a música atual imediatamente (uso por mod/streamer — a checagem de permissão
+        /// fica a cargo de quem chama, assim como em RemoveLastAddedFromQueueAsync).
+        /// </summary>
+        public async Task<(bool Success, string Message)> ForceSkipAsync()
+        {
+            EnsureInitialized();
+
+            var current = CurrentTrackInfo;
+            if (current == null || string.IsNullOrEmpty(current.Identifiers?.Uri) || !current.Player.IsPlaying)
+                return (false, "Nenhuma música tocando no momento para pular.");
+
+            string skippedTrackUri = current.Identifiers.Uri;
+            string skippedTrackTitle = current.Media.Title;
+
+            await SkipToNextAsync();
+            ClearVoteSkip(skippedTrackUri);
+
+            Log($"Música '{skippedTrackTitle}' pulada manualmente.");
+            return (true, $"Música '{skippedTrackTitle}' pulada!");
+        }
+
+        /// <summary>
+        /// Registra o voto de um usuário para pular a música atual. Quando o número de votos
+        /// distintos atinge <paramref name="requiredVotes"/>, a música é pulada automaticamente.
+        /// </summary>
+        public async Task<VoteSkipResult> RegisterVoteSkipAsync(string userId, int requiredVotes, CancellationToken cancellationToken = default)
+        {
+            EnsureInitialized();
+
+            if (string.IsNullOrWhiteSpace(userId))
+                return new VoteSkipResult(false, "Usuário inválido para votar.", 0, requiredVotes, false);
+
+            if (requiredVotes <= 0)
+                requiredVotes = 1;
+
+            var current = CurrentTrackInfo;
+            if (current == null || string.IsNullOrEmpty(current.Identifiers?.Uri) || !current.Player.IsPlaying)
+                return new VoteSkipResult(false, "Nenhuma música tocando no momento para votar.", 0, requiredVotes, false);
+
+            string trackUri = current.Identifiers.Uri;
+            string trackTitle = current.Media.Title;
+
+            var voters = _voteSkipTracker.GetOrAdd(trackUri, _ => new ConcurrentDictionary<string, byte>());
+
+            if (!voters.TryAdd(userId, 0))
+            {
+                return new VoteSkipResult(
+                    false,
+                    $"Você já votou para pular '{trackTitle}'. ({voters.Count}/{requiredVotes} votos)",
+                    voters.Count, requiredVotes, false);
+            }
+
+            int currentVotes = voters.Count;
+
+            if (currentVotes >= requiredVotes)
+            {
+                await SkipToNextAsync();
+                ClearVoteSkip(trackUri);
+
+                Log($"Música '{trackTitle}' pulada por votação ({currentVotes}/{requiredVotes}).");
+                return new VoteSkipResult(true, $"Votação atingida! '{trackTitle}' foi pulada.", currentVotes, requiredVotes, true);
+            }
+
+            Log($"Voto de skip registrado para '{trackTitle}' ({currentVotes}/{requiredVotes}).");
+            return new VoteSkipResult(
+                true,
+                $"Voto registrado! ({currentVotes}/{requiredVotes} votos para pular '{trackTitle}').",
+                currentVotes, requiredVotes, false);
+        }
+
+        #endregion
+
+        #region Public Methods - Playlist
+
+        /// <summary>
+        /// Adiciona a música tocando no momento à playlist informada (ex: playlist de lives).
+        /// </summary>
+        public async Task<(bool Success, string Message)> AddCurrentTrackToPlaylistAsync(
+            string playlistId, CancellationToken cancellationToken = default)
+        {
+            EnsureInitialized();
+
+            if (string.IsNullOrWhiteSpace(playlistId))
+                return (false, "Nenhuma playlist de lives configurada. Rode 'config' para escolher uma.");
+
+            var current = CurrentTrackInfo;
+            if (current == null || string.IsNullOrEmpty(current.Identifiers?.Uri) || !current.Player.IsPlaying)
+                return (false, "Nenhuma música tocando no momento para adicionar à playlist.");
+
+            try
+            {
+                var request = new PlaylistAddItemsRequest([current.Identifiers.Uri]);
+                await _spotifyClient!.Playlists.AddPlaylistItems(playlistId, request, cancellationToken);
+
+                Log($"Música '{current.Media.Title}' adicionada à playlist de lives ({playlistId}).");
+                return (true, $"'{current.Media.Title}' foi adicionada à playlist de lives!");
+            }
+            catch (APIException ex) when (ex.Response?.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                return (false, "Playlist de lives não encontrada. Verifique se ela ainda existe na sua conta.");
+            }
+            catch (APIException ex) when (ex.Response?.StatusCode == System.Net.HttpStatusCode.Forbidden)
+            {
+                return (false, "Sem permissão para adicionar músicas a essa playlist (ela precisa ser sua ou colaborativa).");
+            }
+            catch (Exception ex)
+            {
+                Log($"Erro ao adicionar música à playlist: {ex.Message}");
+                return (false, "Não foi possível adicionar a música à playlist de lives.");
+            }
         }
 
         #endregion
@@ -384,6 +501,9 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
             if (currentTrackUri != _lastTrackUri)
             {
+                // A música mudou: os votos de skip da música anterior não fazem mais sentido.
+                ClearVoteSkip(_lastTrackUri);
+
                 _lastTrackUri = currentTrackUri;
                 SpotifyTrackInfo? matchedRequest = null;
 
@@ -420,6 +540,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         {
             if (!string.IsNullOrEmpty(_lastTrackUri))
             {
+                ClearVoteSkip(_lastTrackUri);
                 _lastTrackUri = string.Empty;
 
                 CurrentTrackInfo = new SpotifyTrackInfo
@@ -430,6 +551,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 OnTrackChanged?.Invoke(this, CurrentTrackInfo);
                 OnPlayerUpdated?.Invoke(this, CurrentTrackInfo);
             }
+        }
+
+        private void ClearVoteSkip(string trackUri)
+        {
+            if (!string.IsNullOrEmpty(trackUri))
+                _voteSkipTracker.TryRemove(trackUri, out _);
         }
 
         #endregion

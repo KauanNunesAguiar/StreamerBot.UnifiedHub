@@ -4,5 +4,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
     public class SpotifyConfig : OAuthConfig
     {
         public string PlaylistId { get; set; } = string.Empty;
+        public int VoteSkipThreshold { get; set; } = 3;
     }
 }

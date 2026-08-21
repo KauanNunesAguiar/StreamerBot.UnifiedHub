@@ -5,11 +5,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
     public class SpotifyAuthService
     {
-        /// <summary>
-        /// Garante a conexão. Se o usuário já tiver o RefreshToken, conecta diretamente.
-        /// Caso contrário (primeiro acesso), abre o painel no navegador.
-        /// </summary>
-        public async Task<SpotifyClient> EnsureAuthenticatedAsync(
+        public static async Task<SpotifyClient> EnsureAuthenticatedAsync(
             SpotifyConfig config,
             SpotifyOAuthHandler oauthHandler,
             CancellationToken cancellationToken = default)
@@ -27,28 +23,24 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return await CreateClientAsync(config);
         }
 
-        /// <summary>
-        /// Força a abertura da página no navegador para alterar Client ID / Secret, 
-        /// mantendo os dados anteriores pré-preenchidos.
-        /// </summary>
-        public async Task<SpotifyClient> ReconfigureAsync(
-    SpotifyConfig config,
-    SpotifyOAuthHandler oauthHandler,
-    CancellationToken cancellationToken = default)
+        public static async Task<SpotifyClient> ReconfigureAsync(
+            SpotifyConfig config,
+            SpotifyOAuthHandler oauthHandler,
+            CancellationToken cancellationToken = default)
         {
-            var (clientId, clientSecret, refreshToken) = await oauthHandler.AuthenticateUserAsync(config, cancellationToken);
+            var result = await oauthHandler.AuthenticateUserAsync(config, cancellationToken);
 
-            if (string.IsNullOrEmpty(refreshToken) || string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(clientSecret))
-            {
+            if (string.IsNullOrEmpty(result.RefreshToken) || string.IsNullOrEmpty(result.ClientId) || string.IsNullOrEmpty(result.ClientSecret))
                 throw new InvalidOperationException("Falha ao salvar as novas configurações do Spotify.");
-            }
 
-            config.ClientId = clientId;
-            config.ClientSecret = clientSecret;
-            config.RefreshToken = refreshToken;
-            // Zera para forçar um refresh completo já que é uma nova credencial
+            config.ClientId = result.ClientId;
+            config.ClientSecret = result.ClientSecret;
+            config.RefreshToken = result.RefreshToken;
             config.AccessToken = string.Empty;
             config.TokenExpiration = DateTime.MinValue;
+
+            if (result.ExtraSettings.TryGetValue("PlaylistId", out string? playlistId) && !string.IsNullOrWhiteSpace(playlistId))
+                config.PlaylistId = playlistId;
 
             return await CreateClientAsync(config);
         }
@@ -66,11 +58,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return response.RefreshToken;
         }
 
-        /// <summary>
-        /// Cria o SpotifyClient reaproveitando o AccessToken salvo se ainda for válido,
-        /// ou renovando via RefreshToken apenas quando necessário.
-        /// </summary>
-        public async Task<SpotifyClient> CreateClientAsync(SpotifyConfig config)
+        public static async Task<SpotifyClient> CreateClientAsync(SpotifyConfig config)
         {
             AuthorizationCodeTokenResponse tokenResponse;
 
@@ -122,6 +110,29 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             Log($"Conectado com sucesso como: {me.DisplayName} ({me.Id})");
 
             return client;
+        }
+
+        public static async Task<SpotifyClient> CreateClientFromRefreshTokenAsync(string clientId, string clientSecret, string refreshToken)
+        {
+            var oauthClient = new OAuthClient();
+            var refreshResponse = await oauthClient.RequestToken(
+                new AuthorizationCodeRefreshRequest(clientId, clientSecret, refreshToken));
+
+            var tokenResponse = new AuthorizationCodeTokenResponse
+            {
+                AccessToken = refreshResponse.AccessToken,
+                RefreshToken = refreshToken,
+                ExpiresIn = refreshResponse.ExpiresIn,
+                CreatedAt = refreshResponse.CreatedAt,
+                Scope = refreshResponse.Scope,
+                TokenType = refreshResponse.TokenType
+            };
+
+            var spotifyConfig = SpotifyClientConfig
+                .CreateDefault()
+                .WithAuthenticator(new AuthorizationCodeAuthenticator(clientId, clientSecret, tokenResponse));
+
+            return new SpotifyClient(spotifyConfig);
         }
 
         private static void Log(string message)
