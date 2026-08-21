@@ -52,7 +52,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             });
         }
 
-        public async Task<bool> ValidateCredentialsAsync(string clientId, string clientSecret)
+        public async Task<bool> ValidateCredentialsAsync(string clientId, string clientSecret, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -67,10 +67,14 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 };
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authHeader);
 
-                var response = await SharedHttpClient.Instance.SendAsync(request);
-                string responseBody = await response.Content.ReadAsStringAsync();
+                var response = await SharedHttpClient.Instance.SendAsync(request, cancellationToken);
+                string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
                 return !responseBody.Contains("invalid_client");
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch
             {

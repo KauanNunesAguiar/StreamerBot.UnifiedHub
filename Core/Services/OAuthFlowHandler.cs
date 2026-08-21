@@ -75,7 +75,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
                             continue;
                         }
 
-                        bool isValid = await _strategy.ValidateCredentialsAsync(clientIdSalvo, clientSecretSalvo);
+                        bool isValid = await _strategy.ValidateCredentialsAsync(clientIdSalvo, clientSecretSalvo, linkedCts.Token);
                         if (!isValid)
                         {
                             context.RespondHtml(_strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, _strategy.InvalidCredentialsMessage), "text/html; charset=utf-8");
