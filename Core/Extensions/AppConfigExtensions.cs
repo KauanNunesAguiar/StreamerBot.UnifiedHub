@@ -1,4 +1,3 @@
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using StreamerBot.UnifiedHub.Core.Models;
 
@@ -11,8 +10,13 @@ namespace StreamerBot.UnifiedHub.Core.Extensions
             if (appConfig.IntegrationSettings.TryGetValue(key, out var value) && value != null)
             {
                 if (value is T typed) return typed;
-                if (value is JObject jObject) return jObject.ToObject<T>() ?? new T();
-                return JsonConvert.DeserializeObject<T>(JsonConvert.SerializeObject(value)) ?? new T();
+
+                if (value is JToken jToken)
+                {
+                    var instance = jToken.ToObject<T>() ?? new T();
+                    appConfig.IntegrationSettings[key] = instance;
+                    return instance;
+                }
             }
 
             var newConfig = new T();

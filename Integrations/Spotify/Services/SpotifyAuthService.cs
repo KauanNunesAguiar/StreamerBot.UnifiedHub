@@ -1,13 +1,19 @@
+using Newtonsoft.Json;
 using SpotifyAPI.Web;
+using StreamerBot.UnifiedHub.Core.Abstractions;
+using StreamerBot.UnifiedHub.Integrations.Spotify.Extensions;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
     public class SpotifyAuthService
     {
+        private static readonly OAuthClient _oauthClient = new();
+
         public static async Task<SpotifyClient> EnsureAuthenticatedAsync(
             SpotifyConfig config,
             SpotifyOAuthHandler oauthHandler,
+            IConfigManager? configManager = null,
             CancellationToken cancellationToken = default)
         {
             if (config == null)
@@ -16,107 +22,159 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             if (!config.IsAuthenticated)
             {
                 Log("Nenhuma configuração encontrada. Abrindo painel no navegador...");
-                return await ReconfigureAsync(config, oauthHandler, cancellationToken);
+                return await ReconfigureAsync(config, oauthHandler, configManager, cancellationToken);
             }
 
-            Log("Credenciais encontradas. Conectando diretamente ao Spotify...");
-            return await CreateClientAsync(config);
+            try
+            {
+                Log("Credenciais encontradas. Conectando diretamente ao Spotify...");
+                return await CreateClientAsync(config, configManager, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Log($"Falha ao autenticar com as credenciais salvas ({ex.Message}). Redirecionando para o navegador...");
+                return await ReconfigureAsync(config, oauthHandler, configManager, cancellationToken);
+            }
         }
 
         public static async Task<SpotifyClient> ReconfigureAsync(
-            SpotifyConfig config,
-            SpotifyOAuthHandler oauthHandler,
-            CancellationToken cancellationToken = default)
+    SpotifyConfig config,
+    SpotifyOAuthHandler oauthHandler,
+    IConfigManager? configManager = null,
+    CancellationToken cancellationToken = default)
         {
+            Log("[DEBUG] Iniciando ReconfigureAsync...");
+
             var result = await oauthHandler.AuthenticateUserAsync(config, cancellationToken);
 
             if (string.IsNullOrEmpty(result.RefreshToken) || string.IsNullOrEmpty(result.ClientId) || string.IsNullOrEmpty(result.ClientSecret))
-                throw new InvalidOperationException("Falha ao salvar as novas configurações do Spotify.");
+            {
+                Log("[ERRO] Resultado do OAuth retornou credenciais em branco ou nulas.");
+                throw new InvalidOperationException("Falha ao obter as novas credenciais do Spotify.");
+            }
 
+            var extra = new Dictionary<string, string>(result.ExtraSettings, StringComparer.OrdinalIgnoreCase);
+
+            // 1. Atualizar credenciais de autenticação (Limpa tokens antigos da memória)
             config.ClientId = result.ClientId;
             config.ClientSecret = result.ClientSecret;
             config.RefreshToken = result.RefreshToken;
-            config.AccessToken = string.Empty;
+            config.AccessToken = string.Empty; // Reseta para forçar renovação limpa
             config.TokenExpiration = DateTime.MinValue;
 
-            if (result.ExtraSettings.TryGetValue("PlaylistId", out string? playlistId) && !string.IsNullOrWhiteSpace(playlistId))
+            // 2. Mapeamento de Playlist
+            if (extra.TryGetValue("playlistId", out string? playlistId) && !string.IsNullOrWhiteSpace(playlistId))
+            {
                 config.PlaylistId = playlistId;
+            }
 
-            return await CreateClientAsync(config);
-        }
+            // 3. Mapeamento de VoteSkip
+            if (extra.TryGetValue("voteSkipThreshold", out string? rawThreshold) && int.TryParse(rawThreshold, out int threshold))
+            {
+                config.VoteSkipThreshold = threshold;
+            }
 
-        public static async Task<string> ExchangeCodeForRefreshTokenAsync(
-            string clientId,
-            string clientSecret,
-            string code,
-            string redirectUri)
-        {
-            var response = await new OAuthClient().RequestToken(
-                new AuthorizationCodeTokenRequest(clientId, clientSecret, code, new Uri(redirectUri))
+            // 4. Mapeamento de Mensagens
+            foreach (var setting in extra)
+            {
+                if (setting.Key.StartsWith("Msg:", StringComparison.OrdinalIgnoreCase))
+                {
+                    string msgKey = setting.Key["Msg:".Length..];
+                    config.Messages[msgKey] = setting.Value;
+                }
+            }
+
+            // 5. Gera o novo SpotifyClient com o RefreshToken RECENTE obtido da web
+            var client = await CreateClientFromRefreshTokenAsync(
+                config.ClientId,
+                config.ClientSecret,
+                config.RefreshToken,
+                cancellationToken
             );
 
-            return response.RefreshToken;
+            // 6. PERSISTÊNCIA: Grava o estado final atualizado no arquivo
+            if (configManager != null)
+            {
+                try
+                {
+                    var appConfig = configManager.Load();
+                    appConfig.SetSpotifyConfig(config);
+                    configManager.Save(appConfig);
+
+                    Log("[SUCCESS] Configurações do Spotify salvas no disco com sucesso!");
+                }
+                catch (Exception ex)
+                {
+                    Log($"[ERRO CRÍTICO] Falha ao tentar gravar no arquivo de configuração: {ex.Message}");
+                }
+            }
+
+            return client;
         }
 
-        public static async Task<SpotifyClient> CreateClientAsync(SpotifyConfig config)
+        public static async Task<SpotifyClient> CreateClientAsync(
+            SpotifyConfig config,
+            IConfigManager? configManager = null,
+            CancellationToken cancellationToken = default)
         {
-            AuthorizationCodeTokenResponse tokenResponse;
-
             bool hasValidAccessToken = !string.IsNullOrEmpty(config.AccessToken)
                 && config.TokenExpiration > DateTime.UtcNow.AddMinutes(1);
 
             if (hasValidAccessToken)
             {
                 Log("Reutilizando Access Token salvo (ainda válido)...");
-                tokenResponse = new AuthorizationCodeTokenResponse
+                var tokenResponse = new AuthorizationCodeTokenResponse
                 {
                     AccessToken = config.AccessToken,
                     RefreshToken = config.RefreshToken,
                     ExpiresIn = (int)(config.TokenExpiration - DateTime.UtcNow).TotalSeconds,
                     CreatedAt = DateTime.UtcNow
                 };
+
+                var spotifyConfig = SpotifyClientConfig
+                    .CreateDefault()
+                    .WithAuthenticator(new AuthorizationCodeAuthenticator(config.ClientId, config.ClientSecret, tokenResponse));
+
+                var client = new SpotifyClient(spotifyConfig);
+                var me = await client.UserProfile.Current(cancellationToken);
+                Log($"Conectado com sucesso como: {me.DisplayName} ({me.Id})");
+
+                return client;
             }
             else
             {
                 Log("Access Token ausente ou expirado. Solicitando novo ao Spotify...");
-                var oauthClient = new OAuthClient();
-                var refreshResponse = await oauthClient.RequestToken(
-                    new AuthorizationCodeRefreshRequest(config.ClientId, config.ClientSecret, config.RefreshToken)
+
+                // Cria um novo cliente já realizando a troca limpa pelo RefreshToken
+                var client = await CreateClientFromRefreshTokenAsync(
+                    config.ClientId,
+                    config.ClientSecret,
+                    config.RefreshToken,
+                    cancellationToken
                 );
 
-                // AuthorizationCodeRefreshResponse não traz RefreshToken novo (Spotify reaproveita o antigo),
-                // então montamos o TokenResponse combinando os dois.
-                tokenResponse = new AuthorizationCodeTokenResponse
+                // Salva os novos tokens atualizados no disco se o manager for fornecido
+                if (configManager != null)
                 {
-                    AccessToken = refreshResponse.AccessToken,
-                    RefreshToken = config.RefreshToken,
-                    ExpiresIn = refreshResponse.ExpiresIn,
-                    CreatedAt = refreshResponse.CreatedAt,
-                    Scope = refreshResponse.Scope,
-                    TokenType = refreshResponse.TokenType
-                };
+                    var appConfig = configManager.Load();
+                    appConfig.SetSpotifyConfig(config);
+                    configManager.Save(appConfig);
+                }
 
-                config.AccessToken = tokenResponse.AccessToken;
-                config.TokenExpiration = DateTime.UtcNow.AddSeconds(tokenResponse.ExpiresIn);
+                return client;
             }
-
-            var spotifyConfig = SpotifyClientConfig
-                .CreateDefault()
-                .WithAuthenticator(new AuthorizationCodeAuthenticator(config.ClientId, config.ClientSecret, tokenResponse));
-
-            var client = new SpotifyClient(spotifyConfig);
-
-            var me = await client.UserProfile.Current();
-            Log($"Conectado com sucesso como: {me.DisplayName} ({me.Id})");
-
-            return client;
         }
 
-        public static async Task<SpotifyClient> CreateClientFromRefreshTokenAsync(string clientId, string clientSecret, string refreshToken)
+        public static async Task<SpotifyClient> CreateClientFromRefreshTokenAsync(
+            string clientId,
+            string clientSecret,
+            string refreshToken,
+            CancellationToken cancellationToken = default)
         {
-            var oauthClient = new OAuthClient();
-            var refreshResponse = await oauthClient.RequestToken(
-                new AuthorizationCodeRefreshRequest(clientId, clientSecret, refreshToken));
+            var refreshResponse = await _oauthClient.RequestToken(
+                new AuthorizationCodeRefreshRequest(clientId, clientSecret, refreshToken),
+                cancellationToken
+            );
 
             var tokenResponse = new AuthorizationCodeTokenResponse
             {
@@ -132,12 +190,30 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 .CreateDefault()
                 .WithAuthenticator(new AuthorizationCodeAuthenticator(clientId, clientSecret, tokenResponse));
 
-            return new SpotifyClient(spotifyConfig);
+            var client = new SpotifyClient(spotifyConfig);
+
+            // Valida a conexão testando a busca do perfil
+            var me = await client.UserProfile.Current(cancellationToken);
+            Log($"Conectado com sucesso como: {me.DisplayName} ({me.Id})");
+
+            return client;
         }
 
-        private static void Log(string message)
+        public static async Task<string> ExchangeCodeForRefreshTokenAsync(
+            string clientId,
+            string clientSecret,
+            string code,
+            string redirectUri,
+            CancellationToken cancellationToken = default)
         {
-            Console.WriteLine($"[SpotifyAuthService] {message}");
+            var response = await _oauthClient.RequestToken(
+                new AuthorizationCodeTokenRequest(clientId, clientSecret, code, new Uri(redirectUri)),
+                cancellationToken
+            );
+
+            return response.RefreshToken;
         }
+
+        private static void Log(string message) => Console.WriteLine($"[SpotifyAuthService] {message}");
     }
 }

@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using Newtonsoft.Json;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Models;
@@ -55,7 +53,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
             }
         }
 
-        private AppConfig ReadConfigFile(string path)
+        private static AppConfig ReadConfigFile(string path)
         {
             try
             {

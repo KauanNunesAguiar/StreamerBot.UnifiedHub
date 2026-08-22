@@ -5,19 +5,19 @@ using StreamerBot.UnifiedHub.Integrations.Youtube.Services;
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
-    public class SpotifyPlayerService(YouTubeService youTubeService)
+    public class SpotifyPlayerService(YouTubeService youTubeService) : IDisposable
     {
         #region Fields
 
+        private bool _disposed;
         private readonly YouTubeService _youTubeService = youTubeService ?? throw new ArgumentNullException(nameof(youTubeService));
         private SpotifyClient? _spotifyClient;
         private string _lastTrackUri = string.Empty;
+
         private readonly ConcurrentDictionary<string, byte> _canceledTrackUris = new();
         private readonly List<SpotifyTrackInfo> _userRequestedQueue = [];
         private readonly SemaphoreSlim _playerLock = new(1, 1);
 
-        // Chave = URI da faixa; Valor = conjunto de userIds que já votaram para pular ESSA faixa.
-        // Como a chave é o URI da música atual, os votos "resetam sozinhos" quando a música muda.
         private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, byte>> _voteSkipTracker = new();
 
         #endregion
@@ -25,6 +25,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         #region Properties & Events
 
         public SpotifyTrackInfo CurrentTrackInfo { get; private set; } = new SpotifyTrackInfo();
+
         public event EventHandler<SpotifyTrackInfo>? OnTrackChanged;
         public event EventHandler<SpotifyTrackInfo>? OnPlayerUpdated;
 
@@ -53,15 +54,15 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             {
                 try
                 {
+                    (CurrentlyPlaying? currentlyPlaying, FullTrack? track) = (null, null);
+
                     await _playerLock.WaitAsync(cancellationToken);
                     try
                     {
-                        var (currentlyPlaying, track) = await FetchCurrentlyPlayingAsync(cancellationToken);
+                        (currentlyPlaying, track) = await FetchCurrentlyPlayingAsync(cancellationToken);
 
                         if (currentlyPlaying != null && track != null)
                         {
-                            UpdateCurrentTrackState(currentlyPlaying, track);
-
                             if (_canceledTrackUris.ContainsKey(track.Uri))
                             {
                                 Log($"[UNDO AUTO] A música '{track.Name}' foi desfeita. Pulando automaticamente...");
@@ -71,15 +72,14 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
                                 lock (_userRequestedQueue)
                                 {
-                                    _userRequestedQueue.RemoveAll(x => x.Identifiers.Uri == track.Uri);
+                                    _userRequestedQueue.RemoveAll(x => x.Identifiers?.Uri == track.Uri);
                                 }
 
                                 await Task.Delay(1000, cancellationToken);
                                 continue;
                             }
 
-                            string progressBar = GenerateProgressBar(CurrentTrackInfo.Player.ProgressMs, CurrentTrackInfo.Player.DurationMs);
-                            Log($"Tocando agora: {track.Name} - {progressBar}");
+                            UpdateCurrentTrackState(currentlyPlaying, track);
                         }
                     }
                     finally
@@ -87,19 +87,21 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                         _playerLock.Release();
                     }
 
-                    // Aguarda o tempo normal entre as requisições
+                    if (currentlyPlaying != null && track != null)
+                    {
+                        string progressBar = GenerateProgressBar(CurrentTrackInfo.Player.ProgressMs, CurrentTrackInfo.Player.DurationMs);
+                        Log($"Tocando agora: {track.Name} - {progressBar}");
+                    }
+
                     await Task.Delay(intervalMilliseconds, cancellationToken);
                 }
                 catch (OperationCanceledException)
                 {
-                    // Ocorreu quando a aplicação solicitou encerramento. Sai suavemente do loop.
                     Log("Monitoramento de músicas encerrado com sucesso.");
                     break;
                 }
-                catch (APIException ex) when ((int?)ex.Response?.StatusCode == 429) // TooManyRequests
+                catch (APIException ex) when ((int?)ex.Response?.StatusCode == 429)
                 {
-                    // O Spotify informa quanto tempo você deve esperar antes de tentar novamente.
-                    // Padrão de 30 segundos de cooldown se a resposta não trouxer o tempo exato.
                     int retryAfterSeconds = 30;
 
                     if (ex.Response?.Headers != null &&
@@ -150,39 +152,41 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return CurrentTrackInfo;
         }
 
-        public async Task PauseAsync()
+        public async Task PauseAsync(CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
-            await _spotifyClient!.Player.PausePlayback();
+            await _spotifyClient!.Player.PausePlayback(cancellationToken);
+
             CurrentTrackInfo.Player.IsPlaying = false;
             OnPlayerUpdated?.Invoke(this, CurrentTrackInfo);
         }
 
-        public async Task ResumeAsync()
+        public async Task ResumeAsync(CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
-            await _spotifyClient!.Player.ResumePlayback();
+            await _spotifyClient!.Player.ResumePlayback(cancellationToken);
+
             CurrentTrackInfo.Player.IsPlaying = true;
             OnPlayerUpdated?.Invoke(this, CurrentTrackInfo);
         }
 
-        public async Task SkipToNextAsync()
+        public async Task SkipToNextAsync(CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
-            await _spotifyClient!.Player.SkipNext();
+            await _spotifyClient!.Player.SkipNext(cancellationToken);
         }
 
-        public async Task SkipToPreviousAsync()
+        public async Task SkipToPreviousAsync(CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
-            await _spotifyClient!.Player.SkipPrevious();
+            await _spotifyClient!.Player.SkipPrevious(cancellationToken);
         }
 
-        public async Task SetVolumeAsync(int volumePercent)
+        public async Task SetVolumeAsync(int volumePercent, CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
             int volume = Math.Clamp(volumePercent, 0, 100);
-            await _spotifyClient!.Player.SetVolume(new PlayerVolumeRequest(volume));
+            await _spotifyClient!.Player.SetVolume(new PlayerVolumeRequest(volume), cancellationToken);
         }
 
         public string GetCurrentTrackProgressBar()
@@ -193,11 +197,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return GenerateProgressBar(CurrentTrackInfo.Player.ProgressMs, CurrentTrackInfo.Player.DurationMs);
         }
 
-        /// <summary>
-        /// Pula a música atual imediatamente (uso por mod/streamer — a checagem de permissão
-        /// fica a cargo de quem chama, assim como em RemoveLastAddedFromQueueAsync).
-        /// </summary>
-        public async Task<(bool Success, string Message)> ForceSkipAsync()
+        public async Task<(bool Success, string Message)> ForceSkipAsync(CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
 
@@ -208,17 +208,13 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             string skippedTrackUri = current.Identifiers.Uri;
             string skippedTrackTitle = current.Media.Title;
 
-            await SkipToNextAsync();
+            await SkipToNextAsync(cancellationToken);
             ClearVoteSkip(skippedTrackUri);
 
             Log($"Música '{skippedTrackTitle}' pulada manualmente.");
             return (true, $"Música '{skippedTrackTitle}' pulada!");
         }
 
-        /// <summary>
-        /// Registra o voto de um usuário para pular a música atual. Quando o número de votos
-        /// distintos atinge <paramref name="requiredVotes"/>, a música é pulada automaticamente.
-        /// </summary>
         public async Task<VoteSkipResult> RegisterVoteSkipAsync(string userId, int requiredVotes, CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
@@ -250,7 +246,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
             if (currentVotes >= requiredVotes)
             {
-                await SkipToNextAsync();
+                await SkipToNextAsync(cancellationToken);
                 ClearVoteSkip(trackUri);
 
                 Log($"Música '{trackTitle}' pulada por votação ({currentVotes}/{requiredVotes}).");
@@ -310,36 +306,31 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         #region Public Methods - Queue Management
 
-        public async Task<List<SpotifyTrackInfo>> GetQueueAsync(int limit = 5)
+        public async Task<List<SpotifyTrackInfo>> GetQueueAsync(int limit = 5, CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
 
             var finalQueue = new List<SpotifyTrackInfo>();
 
-            // 1. Pega primeiro as músicas pendentes solicitadas pelos usuários
             lock (_userRequestedQueue)
             {
                 finalQueue.AddRange(_userRequestedQueue.Take(limit));
             }
 
-            // 2. Se a fila do usuário já atingiu ou superou o limite solicitado, retorna imediatamente
             if (finalQueue.Count >= limit)
             {
                 return finalQueue;
             }
 
-            int itemsNeeded = limit - finalQueue.Count;
-            var queueResponse = await _spotifyClient!.Player.GetQueue();
+            var queueResponse = await _spotifyClient!.Player.GetQueue(cancellationToken);
 
             if (queueResponse?.Queue != null && queueResponse.Queue.Count > 0)
             {
-                // Guardamos as URIs que já temos na fila para evitar duplicatas
                 var existingUris = finalQueue
                     .Select(x => x.Identifiers?.Uri)
                     .Where(uri => !string.IsNullOrEmpty(uri))
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                // Inclui também a música que está tocando agora no HashSet para evitar que ela apareça na fila
                 if (!string.IsNullOrEmpty(CurrentTrackInfo?.Identifiers?.Uri))
                 {
                     existingUris.Add(CurrentTrackInfo.Identifiers.Uri);
@@ -349,13 +340,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 {
                     if (item is FullTrack track)
                     {
-                        // Ignora se for uma música que já está presente na fila do usuário ou tocando no momento
                         if (!string.IsNullOrEmpty(track.Uri) && existingUris.Contains(track.Uri))
                             continue;
 
                         finalQueue.Add(MapToTrackInfo(track));
 
-                        // Se já preenchemos o limite total desejado, interrompe o loop
                         if (finalQueue.Count >= limit)
                             break;
                     }
@@ -365,17 +354,16 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return finalQueue;
         }
 
-        public async Task<SpotifyTrackInfo> AddToQueueAsync(string input, string userId, string userName)
+        public async Task<SpotifyTrackInfo> AddToQueueAsync(string input, string userId, string userName, CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
 
             if (string.IsNullOrWhiteSpace(input))
                 throw new ArgumentException("A entrada não pode estar vazia.", nameof(input));
 
-            string trackUri = string.Empty;
+            string trackUri;
             string searchKeyword = input.Trim();
 
-            // 1. Identificação do tipo de entrada (Spotify URI/URL, YouTube ou Busca por Nome)
             if (searchKeyword.StartsWith("spotify:track:", StringComparison.OrdinalIgnoreCase) ||
                 searchKeyword.Contains("open.spotify.com/track/", StringComparison.OrdinalIgnoreCase) ||
                 searchKeyword.Contains("open.spotify.com/intl-", StringComparison.OrdinalIgnoreCase))
@@ -386,31 +374,28 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                      searchKeyword.Contains("youtu.be/", StringComparison.OrdinalIgnoreCase))
             {
                 Log("Link do YouTube detectado. Obtendo título do vídeo...");
-                string? videoTitle = await _youTubeService.GetVideoTitleAsync(searchKeyword);
+                string? videoTitle = await _youTubeService.GetVideoTitleAsync(searchKeyword, cancellationToken);
 
                 if (string.IsNullOrWhiteSpace(videoTitle))
                     throw new Exception("Não foi possível obter o título do vídeo do YouTube.");
 
                 Log($"Título do vídeo: \"{videoTitle}\". Buscando no Spotify...");
-                trackUri = await SearchAndGetTrackUriAsync(videoTitle);
+                trackUri = await SearchAndGetTrackUriAsync(videoTitle, cancellationToken);
             }
             else
             {
                 Log($"Buscando no Spotify por: \"{searchKeyword}\"...");
-                trackUri = await SearchAndGetTrackUriAsync(searchKeyword);
+                trackUri = await SearchAndGetTrackUriAsync(searchKeyword, cancellationToken);
             }
 
             if (string.IsNullOrEmpty(trackUri))
                 throw new Exception("Nenhuma música correspondente foi encontrada no Spotify.");
 
-            // 2. Consulta os detalhes da faixa na API
             string trackId = trackUri.Replace("spotify:track:", "", StringComparison.OrdinalIgnoreCase).Trim();
-            var trackDetails = await _spotifyClient!.Tracks.Get(trackId)
+            var trackDetails = await _spotifyClient!.Tracks.Get(trackId, cancellationToken)
                 ?? throw new Exception("Não foi possível obter informações detalhadas da música.");
 
-            // 3. Mapeia para o modelo unificado SpotifyTrackInfo
             var queueItem = MapToTrackInfo(trackDetails);
-
             queueItem.Request = new SpotifyRequestInfo
             {
                 UserId = userId,
@@ -426,11 +411,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             Log($"   Duração: {FormatDuration(queueItem.Player.DurationMs)}");
             Log("---------------------------------------------");
 
-            await _playerLock.WaitAsync();
+            await _playerLock.WaitAsync(cancellationToken);
             try
             {
                 Log("Enviando comando AddToQueue para o Spotify...");
-                await _spotifyClient.Player.AddToQueue(new PlayerAddToQueueRequest(trackUri));
+                await _spotifyClient.Player.AddToQueue(new PlayerAddToQueueRequest(trackUri), cancellationToken);
                 Log("Comando AddToQueue aceito com sucesso!\n");
 
                 lock (_userRequestedQueue)
@@ -446,21 +431,24 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return queueItem;
         }
 
-        public Task<(bool Success, SpotifyTrackInfo? RemovedItem, string Message)> RemoveLastAddedFromQueueAsync(string userId, bool isModOrStreamer = false)
+        public Task<(bool Success, SpotifyTrackInfo? RemovedItem, string Message)> RemoveLastAddedFromQueueAsync(
+            string userId,
+            bool isModOrStreamer = false,
+            CancellationToken cancellationToken = default)
         {
             lock (_userRequestedQueue)
             {
                 var itemToRemove = _userRequestedQueue
-                    .LastOrDefault(item => isModOrStreamer || item.Request.UserId == userId);
+                    .LastOrDefault(item => isModOrStreamer || item.Request?.UserId == userId);
 
                 if (itemToRemove == null)
                     return Task.FromResult((false, (SpotifyTrackInfo?)null, "Você não possui nenhuma música pendente na fila para remover."));
 
                 _userRequestedQueue.Remove(itemToRemove);
-                if (!string.IsNullOrEmpty(itemToRemove.Identifiers.Uri))
+                if (!string.IsNullOrEmpty(itemToRemove.Identifiers?.Uri))
                     _canceledTrackUris.TryAdd(itemToRemove.Identifiers.Uri, 0);
 
-                Log($"🗑️ A música '{itemToRemove.Media.Title}' pedida por @{itemToRemove.Request.UserName} foi marcada para remoção/cancelamento.");
+                Log($"🗑️ A música '{itemToRemove.Media.Title}' pedida por @{itemToRemove.Request?.UserName} foi marcada para remoção/cancelamento.");
 
                 return Task.FromResult((true, (SpotifyTrackInfo?)itemToRemove, $"A música '{itemToRemove.Media.Title}' foi removida com sucesso da sua fila!"));
             }
@@ -498,42 +486,48 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         private SpotifyTrackInfo UpdateCurrentTrackState(CurrentlyPlaying currentlyPlaying, FullTrack track)
         {
             string currentTrackUri = track.Uri;
+            bool hasTrackChanged = false;
+            SpotifyTrackInfo updatedTrack;
 
             if (currentTrackUri != _lastTrackUri)
             {
-                // A música mudou: os votos de skip da música anterior não fazem mais sentido.
+                hasTrackChanged = true;
                 ClearVoteSkip(_lastTrackUri);
-
                 _lastTrackUri = currentTrackUri;
-                SpotifyTrackInfo? matchedRequest = null;
 
+                SpotifyTrackInfo? matchedRequest = null;
                 lock (_userRequestedQueue)
                 {
-                    matchedRequest = _userRequestedQueue.FirstOrDefault(x => x.Identifiers.Uri == currentTrackUri);
+                    matchedRequest = _userRequestedQueue.FirstOrDefault(x => x.Identifiers?.Uri == currentTrackUri);
                     if (matchedRequest != null)
                         _userRequestedQueue.Remove(matchedRequest);
                 }
 
-                CurrentTrackInfo = MapToTrackInfo(track);
-                CurrentTrackInfo.Player.IsPlaying = currentlyPlaying.IsPlaying;
-                CurrentTrackInfo.Player.ProgressMs = currentlyPlaying.ProgressMs ?? 0;
+                updatedTrack = MapToTrackInfo(track);
+                updatedTrack.Player.IsPlaying = currentlyPlaying.IsPlaying;
+                updatedTrack.Player.ProgressMs = currentlyPlaying.ProgressMs ?? 0;
 
                 if (matchedRequest != null)
-                    CurrentTrackInfo.Request = matchedRequest.Request;
+                    updatedTrack.Request = matchedRequest.Request;
 
-                OnTrackChanged?.Invoke(this, CurrentTrackInfo);
-                OnPlayerUpdated?.Invoke(this, CurrentTrackInfo);
+                CurrentTrackInfo = updatedTrack;
             }
             else
             {
                 CurrentTrackInfo.Player.ProgressMs = currentlyPlaying.ProgressMs ?? 0;
                 CurrentTrackInfo.Player.DurationMs = track.DurationMs;
                 CurrentTrackInfo.Player.IsPlaying = currentlyPlaying.IsPlaying;
-
-                OnPlayerUpdated?.Invoke(this, CurrentTrackInfo);
+                updatedTrack = CurrentTrackInfo;
             }
 
-            return CurrentTrackInfo;
+            if (hasTrackChanged)
+            {
+                OnTrackChanged?.Invoke(this, updatedTrack);
+            }
+
+            OnPlayerUpdated?.Invoke(this, updatedTrack);
+
+            return updatedTrack;
         }
 
         private void ResetCurrentTrackInfo()
@@ -565,7 +559,15 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         private static SpotifyTrackInfo MapToTrackInfo(FullTrack track)
         {
-            track.ExternalUrls.TryGetValue("spotify", out string? trackUrl);
+            string trackUrl = string.Empty;
+            if (track.ExternalUrls != null && track.ExternalUrls.TryGetValue("spotify", out string? url))
+            {
+                trackUrl = url ?? string.Empty;
+            }
+
+            string artists = track.Artists != null
+                ? string.Join(", ", track.Artists.Select(a => a.Name))
+                : string.Empty;
 
             return new SpotifyTrackInfo
             {
@@ -573,12 +575,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 {
                     Id = track.Id ?? string.Empty,
                     Uri = track.Uri ?? string.Empty,
-                    Url = trackUrl ?? string.Empty
+                    Url = trackUrl
                 },
                 Media = new SpotifyMediaDetails
                 {
-                    Title = track.Name,
-                    Artist = string.Join(", ", track.Artists.Select(a => a.Name)),
+                    Title = track.Name ?? string.Empty,
+                    Artist = artists,
                     Album = track.Album?.Name ?? string.Empty,
                     AlbumArtUrl = track.Album?.Images?.FirstOrDefault()?.Url ?? string.Empty,
                     IsExplicit = track.Explicit
@@ -589,6 +591,29 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                     IsPlaying = false
                 }
             };
+        }
+
+        #endregion
+
+        #region IDisposable Implementation
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed)
+                return;
+
+            if (disposing)
+            {
+                _playerLock.Dispose();
+            }
+
+            _disposed = true;
         }
 
         #endregion
@@ -625,14 +650,14 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return string.Empty;
         }
 
-        private async Task<string> SearchAndGetTrackUriAsync(string query)
+        private async Task<string> SearchAndGetTrackUriAsync(string query, CancellationToken cancellationToken = default)
         {
             var searchRequest = new SearchRequest(SearchRequest.Types.Track, query)
             {
                 Limit = 1
             };
 
-            var searchResult = await _spotifyClient!.Search.Item(searchRequest);
+            var searchResult = await _spotifyClient!.Search.Item(searchRequest, cancellationToken);
 
             if (searchResult?.Tracks?.Items != null && searchResult.Tracks.Items.Count > 0)
             {
@@ -667,6 +692,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         private void EnsureInitialized()
         {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+
             if (_spotifyClient == null)
                 throw new InvalidOperationException("O SpotifyClient não foi inicializado no SpotifyService. Utilize o SpotifyAuthService para autenticar e chame SetClient().");
         }

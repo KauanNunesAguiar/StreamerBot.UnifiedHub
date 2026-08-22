@@ -9,6 +9,9 @@ namespace StreamerBot.UnifiedHub.Core.Models
         public string RefreshToken { get; set; } = string.Empty;
         public DateTime TokenExpiration { get; set; }
 
-        public virtual bool IsAuthenticated => !string.IsNullOrWhiteSpace(RefreshToken);
+        public bool IsAuthenticated =>
+            !string.IsNullOrWhiteSpace(ClientId) &&
+            !string.IsNullOrWhiteSpace(ClientSecret) &&
+            !string.IsNullOrWhiteSpace(RefreshToken);
     }
 }

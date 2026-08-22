@@ -28,7 +28,6 @@ namespace StreamerBot.UnifiedHub.Core.Services
             string clientIdSalvo = clientId ?? string.Empty;
             string clientSecretSalvo = clientSecret ?? string.Empty;
 
-            // Preenchidos assim que o login é concluído; usados no(s) passo(s) pós-login
             OAuthResult? pendingResult = null;
             bool awaitingPostAuthSubmission = false;
 
@@ -39,25 +38,21 @@ namespace StreamerBot.UnifiedHub.Core.Services
             {
                 while (!linkedCts.Token.IsCancellationRequested)
                 {
-                    var waitForRequestTask = _httpServer.WaitForRequestAsync();
-                    var completedTask = await Task.WhenAny(waitForRequestTask, Task.Delay(-1, linkedCts.Token));
+                    // Passa o linkedCts.Token diretamente para evitar orphaned tasks
+                    var context = await _httpServer.WaitForRequestAsync(linkedCts.Token);
+                    if (context == null) throw new OperationCanceledException("Servidor encerrado.");
 
-                    if (completedTask != waitForRequestTask)
-                        throw new TimeoutException("Tempo limite esgotado ou operação cancelada. O painel de configurações foi fechado antes da conclusão.");
-
-                    var context = await waitForRequestTask ?? throw new OperationCanceledException("O servidor HTTP local foi interrompido.");
                     string rawUrl = context.RawUrl ?? string.Empty;
 
+                    // 1. Rota de Cancelamento
                     if (rawUrl.Contains("/cancel", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Se já passou do login e cancelou só a tela de configs extras, o login continua válido
                         string htmlCancel = awaitingPostAuthSubmission
                             ? "<html><body style='background:#121212; color:#fff; font-family:sans-serif; text-align:center; padding-top:50px;'><h2>Configurações extras não foram salvas.</h2><p>Seu login continua válido. Você já pode fechar esta aba.</p></body></html>"
                             : "<html><body style='background:#121212; color:#fff; font-family:sans-serif; text-align:center; padding-top:50px;'><h2>Operação cancelada pelo usuário.</h2><p>Você já pode fechar esta aba e retornar ao aplicativo.</p></body></html>";
 
                         context.RespondHtml(htmlCancel, "text/html; charset=utf-8");
-                        await Task.Delay(500);
-                        _httpServer.Stop();
+                        await Task.Delay(500, cancellationToken);
 
                         if (awaitingPostAuthSubmission && pendingResult != null)
                             return pendingResult;
@@ -65,13 +60,12 @@ namespace StreamerBot.UnifiedHub.Core.Services
                         throw new OperationCanceledException("O usuário cancelou a configuração.");
                     }
 
+                    // 2. Método POST (Formulários)
                     if (context.Method.Equals("POST", StringComparison.OrdinalIgnoreCase))
                     {
-                        // Passo 2+: envio da tela pós-login (playlist, mensagens da twitch, etc.)
                         if (awaitingPostAuthSubmission && pendingResult != null)
                         {
                             string? error = await _strategy.ProcessPostAuthStepAsync(pendingResult, context.Body ?? string.Empty, linkedCts.Token);
-
                             if (error != null)
                             {
                                 string retryHtml = await _strategy.RenderPostAuthStepHtmlAsync(pendingResult, error, linkedCts.Token);
@@ -80,19 +74,17 @@ namespace StreamerBot.UnifiedHub.Core.Services
                             }
 
                             context.RespondHtml(BuildFinalSuccessHtml(), "text/html; charset=utf-8");
-                            await Task.Delay(500);
+                            await Task.Delay(500, cancellationToken);
                             return pendingResult;
                         }
 
-                        // Passo 1: envio do formulário de login (Client ID / Client Secret)
                         var formData = HttpUtility.ParseQueryString(context.Body ?? string.Empty);
                         clientIdSalvo = formData["clientId"]?.Trim() ?? string.Empty;
                         clientSecretSalvo = formData["clientSecret"]?.Trim() ?? string.Empty;
 
                         if (string.IsNullOrWhiteSpace(clientIdSalvo) || string.IsNullOrWhiteSpace(clientSecretSalvo))
                         {
-                            string erroCampos = "Preencha o Client ID e o Client Secret antes de salvar.";
-                            context.RespondHtml(_strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, erroCampos), "text/html; charset=utf-8");
+                            context.RespondHtml(_strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, "Preencha o Client ID e o Client Secret."), "text/html; charset=utf-8");
                             continue;
                         }
 
@@ -106,16 +98,15 @@ namespace StreamerBot.UnifiedHub.Core.Services
                         string authUrl = _strategy.BuildAuthorizationUrl(clientIdSalvo, redirectUri);
                         context.Redirect(authUrl);
                     }
-                    else if (context.RawUrl != null && context.RawUrl.Contains("code="))
+                    // 3. Callback OAuth (Code Authorization)
+                    else if (rawUrl.Contains("code="))
                     {
-                        var query = HttpUtility.ParseQueryString(new Uri("http://127.0.0.1" + context.RawUrl).Query);
+                        var query = HttpUtility.ParseQueryString(new Uri("http://127.0.0.1" + rawUrl).Query);
                         string code = query["code"] ?? string.Empty;
 
                         try
                         {
-                            string refreshToken = await _strategy.ExchangeCodeForRefreshTokenAsync(
-                                clientIdSalvo, clientSecretSalvo, code, redirectUri);
-
+                            string refreshToken = await _strategy.ExchangeCodeForRefreshTokenAsync(clientIdSalvo, clientSecretSalvo, code, redirectUri);
                             var result = new OAuthResult
                             {
                                 ClientId = clientIdSalvo,
@@ -127,7 +118,6 @@ namespace StreamerBot.UnifiedHub.Core.Services
                             {
                                 pendingResult = result;
                                 awaitingPostAuthSubmission = true;
-
                                 string setupHtml = await _strategy.RenderPostAuthStepHtmlAsync(result, null, linkedCts.Token);
                                 context.RespondHtml(setupHtml, "text/html; charset=utf-8");
                                 continue;
@@ -140,11 +130,11 @@ namespace StreamerBot.UnifiedHub.Core.Services
                         {
                             string erroApi = _strategy.BuildExchangeErrorMessage(ex);
                             context.RespondHtml(_strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, erroApi), "text/html; charset=utf-8");
-
                             await Task.Delay(500, cancellationToken);
                             throw new InvalidOperationException(erroApi, ex);
                         }
                     }
+                    // 4. Renderização Padrão (GET inicial)
                     else
                     {
                         string html = awaitingPostAuthSubmission && pendingResult != null
