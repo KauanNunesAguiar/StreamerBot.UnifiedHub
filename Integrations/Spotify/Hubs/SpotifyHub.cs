@@ -1,11 +1,11 @@
-using Newtonsoft.Json;
 using StreamerBot.UnifiedHub.Core.Models;
 using StreamerBot.UnifiedHub.Core.Services;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Extensions;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
+using StreamerBot.UnifiedHub.Integrations.Spotify.Services;
 using StreamerBot.UnifiedHub.Integrations.Youtube.Services;
 
-namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
+namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
 {
     public static class SpotifyHub
     {
@@ -18,6 +18,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         public static event EventHandler<SpotifyTrackInfo>? OnTrackChanged;
         public static event EventHandler<SpotifyTrackInfo>? OnPlayerUpdated;
+        public static event EventHandler<ChatMessageEventArgs>? OnChatMessage;
 
         #region Inicialização
 
@@ -52,6 +53,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
                 manager.OnTrackChanged += (sender, track) => OnTrackChanged?.Invoke(sender, track);
                 manager.OnPlayerUpdated += (sender, track) => OnPlayerUpdated?.Invoke(sender, track);
+                manager.OnChatMessage += (sender, args) => OnChatMessage?.Invoke(sender, args);
 
                 await manager.InitializeAsync(cancellationToken);
 
@@ -84,33 +86,33 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         #region Player
 
-        public static Task<HubResult> PauseAsync(CancellationToken cancellationToken = default)
+        public static Task<HubResult> PauseAsync(string user = "", CancellationToken cancellationToken = default)
             => ExecuteAsync(
-                async () => { await _manager!.PauseAsync(cancellationToken); },
+                async () => { await _manager!.PauseAsync(user, cancellationToken); },
                 "Reprodução pausada.",
                 "pausar a música");
 
-        public static Task<HubResult> ResumeAsync(CancellationToken cancellationToken = default)
+        public static Task<HubResult> ResumeAsync(string user = "", CancellationToken cancellationToken = default)
             => ExecuteAsync(
-                async () => { await _manager!.ResumeAsync(cancellationToken); },
+                async () => { await _manager!.ResumeAsync(user, cancellationToken); },
                 "Reprodução retomada.",
                 "retomar a música");
 
-        public static Task<HubResult> NextAsync(CancellationToken cancellationToken = default)
+        public static Task<HubResult> NextAsync(string user = "", CancellationToken cancellationToken = default)
             => ExecuteAsync(
-                async () => { await _manager!.SkipToNextAsync(cancellationToken); },
+                async () => { await _manager!.SkipToNextAsync(user, cancellationToken); },
                 "Música pulada para a próxima.",
                 "pular para a próxima música");
 
-        public static Task<HubResult> PreviousAsync(CancellationToken cancellationToken = default)
+        public static Task<HubResult> PreviousAsync(string user = "", CancellationToken cancellationToken = default)
             => ExecuteAsync(
-                async () => { await _manager!.SkipToPreviousAsync(cancellationToken); },
+                async () => { await _manager!.SkipToPreviousAsync(user, cancellationToken); },
                 "Voltou para a música anterior.",
                 "voltar para a música anterior");
 
-        public static Task<HubResult> SetVolumeAsync(int volumePercent, CancellationToken cancellationToken = default)
+        public static Task<HubResult> SetVolumeAsync(int volumePercent, string user = "", CancellationToken cancellationToken = default)
             => ExecuteAsync(
-                async () => { await _manager!.SetVolumeAsync(volumePercent, cancellationToken); },
+                async () => { await _manager!.SetVolumeAsync(volumePercent, user, cancellationToken); },
                 $"Volume ajustado para {volumePercent}%.",
                 "ajustar o volume");
 
@@ -185,12 +187,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         #region Playlist / Skip
 
-        public static async Task<HubResult> AddCurrentTrackToPlaylistAsync(CancellationToken cancellationToken = default)
+        public static async Task<HubResult> AddCurrentTrackToPlaylistAsync(string user = "", CancellationToken cancellationToken = default)
         {
             try
             {
                 EnsureReady();
-                var (success, message) = await _manager!.AddCurrentTrackToPlaylistAsync(cancellationToken);
+                var (success, message) = await _manager!.AddCurrentTrackToPlaylistAsync(user, cancellationToken);
                 return new HubResult(success, message);
             }
             catch (Exception ex)
@@ -199,12 +201,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             }
         }
 
-        public static async Task<HubResult> ForceSkipAsync(CancellationToken cancellationToken = default)
+        public static async Task<HubResult> ForceSkipAsync(string user = "", CancellationToken cancellationToken = default)
         {
             try
             {
                 EnsureReady();
-                var (success, message) = await _manager!.ForceSkipAsync(cancellationToken);
+                var (success, message) = await _manager!.ForceSkipAsync(user, cancellationToken);
                 return new HubResult(success, message);
             }
             catch (Exception ex)

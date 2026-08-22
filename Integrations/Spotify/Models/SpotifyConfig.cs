@@ -8,6 +8,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
         public string PlaylistId { get; set; } = string.Empty;
         public int VoteSkipThreshold { get; set; } = 3;
         public int QueueSize { get; set; } = 5;
+        public string BotName { get; set; } = "Spotify";
 
         // Dicionário de mensagens customizadas pelo usuário (Key -> Template)
         public Dictionary<string, string> Messages { get; set; } = new();
