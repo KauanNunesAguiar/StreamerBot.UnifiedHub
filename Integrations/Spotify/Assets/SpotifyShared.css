@@ -1,0 +1,48 @@
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group textarea,
+.message-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-main);
+    font-size: 13px;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.message-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+}
+
+.field-hint {
+    display: block;
+    font-size: 11px;
+    color: var(--text-sub);
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+.field-hint code {
+    background: #282828;
+    padding: 2px 5px;
+    border-radius: 4px;
+    color: #1ed760;
+    font-family: monospace;
+    font-size: 11px;
+}

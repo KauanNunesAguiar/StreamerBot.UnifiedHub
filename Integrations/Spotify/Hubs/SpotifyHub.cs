@@ -42,11 +42,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 var appConfig = configManager.Load();
                 var spotifyConfig = appConfig.GetSpotifyConfig();
 
-                var httpServer = new LocalHttpListener();
+                var httpServer = new EmbedIoHttpServer();
                 var browserService = new SystemBrowser();
                 var oauthHandler = new SpotifyOAuthHandler(httpServer, browserService, configManager);
 
-                var youTubeService = new YouTubeService(SharedHttpClient.Instance);
+                var youTubeService = new YouTubeService(HubServiceProvider.GetHttpClient("YouTube"));
                 var playerService = new SpotifyPlayerService(youTubeService);
 
                 var manager = new SpotifyManager(oauthHandler, playerService, spotifyConfig, configManager);

@@ -1,5 +1,4 @@
 using System.Reflection;
-using System.Text;
 using System.Web;
 using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Core.Abstractions;
@@ -11,8 +10,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
     public class SpotifyOAuthStrategy(SpotifyConfig? spotifyConfig = null, IConfigManager? configManager = null) : IOAuthFlowStrategy
     {
-        private const string LoginHtmlResourceName = "StreamerBot.UnifiedHub.Integrations.Spotify.Assets.spotify-login.html";
-        private const string SettingsHtmlResourceName = "StreamerBot.UnifiedHub.Integrations.Spotify.Assets.spotify-settings.html";
+        private const string LoginHtmlResourceName = "Integrations.Spotify.Assets.spotify-login.html";
+        private const string SettingsHtmlResourceName = "Integrations.Spotify.Assets.spotify-settings.html";
         private readonly SpotifyConfig? _spotifyConfig = spotifyConfig;
         private readonly IConfigManager? _configManager = configManager;
 
@@ -45,20 +44,16 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         public string BuildExchangeErrorMessage(Exception ex) =>
             $"Falha ao validar credenciais (Client Secret pode estar incorreto): {ex.Message}";
 
-        public string RenderFormHtml(string clientId, string clientSecret, string? erro)
+        public async Task<string> RenderFormHtml(string clientId, string clientSecret, string? erro)
         {
-            string template = EmbeddedTemplateRenderer.Load(Assembly.GetExecutingAssembly(), LoginHtmlResourceName);
-
-            string divErro = string.IsNullOrEmpty(erro)
-                ? string.Empty
-                : $"<div class=\"error\">{erro}</div>";
-
-            return EmbeddedTemplateRenderer.Render(template, new Dictionary<string, string>
+            var model = new SpotifyLoginViewModel
             {
-                ["ERROR_SECTION"] = divErro,
-                ["CLIENT_ID"] = clientId,
-                ["CLIENT_SECRET"] = clientSecret
-            });
+                ClientId = clientId,
+                ClientSecret = clientSecret,
+                Error = erro
+            };
+
+            return await RazorTemplateRenderer.RenderAsync(LoginHtmlResourceName, model);
         }
 
         public async Task<bool> ValidateCredentialsAsync(string clientId, string clientSecret, CancellationToken cancellationToken = default)
@@ -76,7 +71,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 };
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authHeader);
 
-                var response = await SharedHttpClient.Instance.SendAsync(request, cancellationToken);
+                var response = await HubServiceProvider.GetHttpClient("Spotify").SendAsync(request, cancellationToken);
                 string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
                 return response.IsSuccessStatusCode && !responseBody.Contains("invalid_client");
@@ -95,25 +90,20 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         {
             var playlists = await FetchPlaylistsAsync(result, cancellationToken);
 
-            string template = EmbeddedTemplateRenderer.Load(Assembly.GetExecutingAssembly(), SettingsHtmlResourceName);
-
-            string errorSection = string.IsNullOrEmpty(error) ? string.Empty : $"<div class=\"error\">{error}</div>";
-            string selectedPlaylistId = _spotifyConfig?.PlaylistId ?? string.Empty;
-
-            string itemsHtml = playlists.Count == 0
-                ? "<p class=\"empty-state\">Nenhuma playlist encontrada na sua conta.</p>"
-                : string.Concat(playlists.Select(p => BuildPlaylistItemHtml(p, selectedPlaylistId)));
-
-            string messagesHtml = BuildMessageInputsHtml();
-            string voteThreshold = (_spotifyConfig?.VoteSkipThreshold ?? 3).ToString();
-
-            return EmbeddedTemplateRenderer.Render(template, new Dictionary<string, string>
+            var model = new SpotifySettingsViewModel
             {
-                ["ERROR_SECTION"] = errorSection,
-                ["PLAYLIST_ITEMS"] = itemsHtml,
-                ["MESSAGE_INPUTS"] = messagesHtml,
-                ["VOTE_SKIP_THRESHOLD"] = voteThreshold
-            });
+                Error = error,
+                Playlists = playlists,
+                SelectedPlaylistId = _spotifyConfig?.PlaylistId ?? string.Empty,
+                VoteSkipThreshold = _spotifyConfig?.VoteSkipThreshold ?? 3,
+                Messages = [.. SpotifyMessageCatalog.Definitions.Select(def => new SpotifyMessageInputViewModel
+                {
+                    Definition = def,
+                    Value = _spotifyConfig != null && _spotifyConfig.Messages.TryGetValue(def.Key, out var v) ? v : string.Empty
+                })]
+            };
+
+            return await RazorTemplateRenderer.RenderAsync(SettingsHtmlResourceName, model);
         }
 
         public Task<string?> ProcessPostAuthStepAsync(OAuthResult result, string formBody, CancellationToken cancellationToken)
@@ -167,48 +157,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             }
 
             return playlists;
-        }
-
-        private static string BuildPlaylistItemHtml(SpotifyPlaylistInfo playlist, string selectedPlaylistId)
-        {
-            string imageHtml = string.IsNullOrEmpty(playlist.ImageUrl)
-                ? "<div class=\"playlist-thumb-placeholder\">🎵</div>"
-                : $"<img class=\"playlist-thumb\" src=\"{playlist.ImageUrl}\" alt=\"\">";
-
-            string isChecked = playlist.Id == selectedPlaylistId ? "checked" : string.Empty;
-
-            return $@"
-                <label class=""playlist-item"">
-                    <input type=""radio"" name=""playlistId"" value=""{playlist.Id}"" {isChecked}>
-                    {imageHtml}
-                    <div class=""playlist-info"">
-                        <span class=""playlist-name"">{HttpUtility.HtmlEncode(playlist.Name)}</span>
-                        <span class=""playlist-tracks"">{playlist.TracksTotal} faixas</span>
-                    </div>
-                </label>";
-        }
-
-        private string BuildMessageInputsHtml()
-        {
-            var sb = new StringBuilder();
-
-            foreach (var def in SpotifyMessageCatalog.Definitions)
-            {
-                string? currentVal = null;
-                _spotifyConfig?.Messages.TryGetValue(def.Key, out currentVal);
-                string value = currentVal ?? string.Empty;
-
-                string placeholders = string.Join(" ", def.Placeholders.Select(p => $"<code>{p}</code>"));
-
-                sb.Append($@"
-                <div class=""message-group"">
-                    <label for=""msg_{def.Key}"">{HttpUtility.HtmlEncode(def.Label)}</label>
-                    <textarea id=""msg_{def.Key}"" name=""msg_{def.Key}"" rows=""2"" placeholder=""{HttpUtility.HtmlEncode(def.Description)}"">{HttpUtility.HtmlEncode(value)}</textarea>
-                    <div class=""vars-help"">Variáveis disponíveis: {placeholders}</div>
-                </div>");
-            }
-
-            return sb.ToString();
         }
     }
 }

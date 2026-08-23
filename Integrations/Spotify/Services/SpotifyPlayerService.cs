@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 using StreamerBot.UnifiedHub.Integrations.Youtube.Services;
@@ -90,7 +91,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                     if (currentlyPlaying != null && track != null)
                     {
                         string progressBar = GenerateProgressBar(CurrentTrackInfo.Player.ProgressMs, CurrentTrackInfo.Player.DurationMs);
-                        Log($"Tocando agora: {track.Name} - {progressBar}");
+                        LogDebug($"Tocando agora: {track.Name} - {progressBar}");
                     }
 
                     await Task.Delay(intervalMilliseconds, cancellationToken);
@@ -701,6 +702,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         private static void Log(string message)
         {
             Console.WriteLine($"[SpotifyService] {message}");
+        }
+
+        private static void LogDebug(string message)
+        {
+            Debug.WriteLine($"[SpotifyService] {message}");
         }
 
         #endregion

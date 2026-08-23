@@ -5,13 +5,14 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
         public string Key { get; set; } = string.Empty;
         public string Label { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
-        public List<string> Placeholders { get; set; } = new();
+        public List<string> Placeholders { get; set; } = [];
     }
 
     public static class SpotifyMessageCatalog
     {
         public static class Keys
         {
+            public const string New = "new";
             public const string Play = "play";
             public const string Pause = "pause";
             public const string Next = "next";
@@ -32,6 +33,13 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
         /// </summary>
         public static List<MessageDefinition> Definitions { get; } =
         [
+            new MessageDefinition
+            {
+                Key = Keys.New,
+                Label = "Alerta de Nova Música",
+                Description = "Mensagem exibida para avisar música atual.",
+                Placeholders = ["{user}", "{musica}", "{artista}", "{album}", "{link_musica}" ]
+            },
             new MessageDefinition
             {
                 Key = Keys.Play,

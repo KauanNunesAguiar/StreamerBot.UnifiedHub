@@ -84,14 +84,14 @@ namespace StreamerBot.UnifiedHub.Core.Services
 
                         if (string.IsNullOrWhiteSpace(clientIdSalvo) || string.IsNullOrWhiteSpace(clientSecretSalvo))
                         {
-                            context.RespondHtml(_strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, "Preencha o Client ID e o Client Secret."), "text/html; charset=utf-8");
+                            context.RespondHtml(await _strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, "Preencha o Client ID e o Client Secret."), "text/html; charset=utf-8");
                             continue;
                         }
 
                         bool isValid = await _strategy.ValidateCredentialsAsync(clientIdSalvo, clientSecretSalvo, linkedCts.Token);
                         if (!isValid)
                         {
-                            context.RespondHtml(_strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, _strategy.InvalidCredentialsMessage), "text/html; charset=utf-8");
+                            context.RespondHtml(await _strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, _strategy.InvalidCredentialsMessage), "text/html; charset=utf-8");
                             continue;
                         }
 
@@ -129,7 +129,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
                         catch (Exception ex)
                         {
                             string erroApi = _strategy.BuildExchangeErrorMessage(ex);
-                            context.RespondHtml(_strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, erroApi), "text/html; charset=utf-8");
+                            context.RespondHtml(await _strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, erroApi), "text/html; charset=utf-8");
                             await Task.Delay(500, cancellationToken);
                             throw new InvalidOperationException(erroApi, ex);
                         }
@@ -139,7 +139,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
                     {
                         string html = awaitingPostAuthSubmission && pendingResult != null
                             ? await _strategy.RenderPostAuthStepHtmlAsync(pendingResult, null, linkedCts.Token)
-                            : _strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, null);
+                            : await _strategy.RenderFormHtml(clientIdSalvo, clientSecretSalvo, null);
 
                         context.RespondHtml(html, "text/html; charset=utf-8");
                     }
