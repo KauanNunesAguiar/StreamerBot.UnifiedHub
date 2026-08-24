@@ -34,6 +34,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
+            _playerService.OnTrackChanged += HandleTrackChangedForNewTrackMessage;
+
             var spotifyClient = await SpotifyAuthService.EnsureAuthenticatedAsync(_config, _oauthHandler, _configManager, cancellationToken);
             _playerService.SetClient(spotifyClient);
         }
@@ -51,6 +53,21 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         public Task<SpotifyTrackInfo> GetCurrentTrackAsync(CancellationToken cancellationToken = default)
             => _playerService.GetCurrentTrackAsync(cancellationToken);
+
+        private void HandleTrackChangedForNewTrackMessage(object? sender, SpotifyTrackInfo track)
+        {
+            if (!track.Player.IsPlaying || string.IsNullOrEmpty(track.Identifiers.Uri))
+                return; // ignora o reset (nada tocando)
+
+            RaiseChatMessage(SpotifyMessageCatalog.Keys.New, new()
+            {
+                ["user"] = track.Request.IsUserRequested ? track.Request.UserName : string.Empty,
+                ["musica"] = track.Media.Title,
+                ["artista"] = track.Media.Artist,
+                ["album"] = track.Media.Album,
+                ["link_musica"] = track.Identifiers.Url
+            });
+        }
 
         public async Task PauseAsync(string user = "", CancellationToken cancellationToken = default)
         {
@@ -84,8 +101,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         public string GetCurrentTrackProgressBar() => _playerService.GetCurrentTrackProgressBar();
 
-        public Task<List<SpotifyTrackInfo>> GetQueueAsync(int limit = 5, CancellationToken cancellationToken = default)
-            => _playerService.GetQueueAsync(limit, cancellationToken);
+        public Task<List<SpotifyTrackInfo>> GetQueueAsync(int? limit = null, CancellationToken cancellationToken = default)
+            => _playerService.GetQueueAsync(limit ?? _config.QueueSize, cancellationToken);
 
         public async Task<SpotifyTrackInfo> AddToQueueAsync(string input, string userId, string userName, CancellationToken cancellationToken = default)
         {

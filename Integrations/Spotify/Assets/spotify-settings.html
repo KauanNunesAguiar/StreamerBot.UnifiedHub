@@ -172,6 +172,28 @@
                 <input type="number" id="voteSkipThreshold" name="voteSkipThreshold" min="1" max="100"
                     value="@Model.VoteSkipThreshold">
             </div>
+            <div class="form-group">
+                <label for="queueSize">Tamanho da Fila Exibida</label>
+                <input type="number" id="queueSize" name="queueSize" min="1" max="50" value="@Model.QueueSize">
+            </div>
+            <div class="form-group">
+                <label for="pollingIntervalMs">Intervalo de Monitoramento (ms)</label>
+                <input type="number" id="pollingIntervalMs" name="pollingIntervalMs" min="1000" step="500"
+                    value="@Model.PollingIntervalMs">
+                <span class="field-hint">Frequência com que o bot verifica a música tocando. Padrão: 5000ms.</span>
+            </div>
+
+            <div class="section-title">Identidade do Bot</div>
+            <div class="form-group">
+                <label for="botName">Nome do Bot no Chat</label>
+                <input type="text" id="botName" name="botName" value="@Model.BotName">
+            </div>
+            <div class="form-group">
+                <label for="botImageUrl">URL da Imagem/Avatar do Bot</label>
+                <input type="text" id="botImageUrl" name="botImageUrl" value="@Model.BotImageUrl"
+                    placeholder="https://...">
+                <span class="field-hint">Opcional - reservado para integrações futuras (ex: webhooks com embed).</span>
+            </div>
 
             <div class="section-title">Mensagens do Chat</div>
             <div class="messages-container">

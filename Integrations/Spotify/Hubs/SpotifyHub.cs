@@ -27,7 +27,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
         /// (abrindo o navegador automaticamente se necessário) e inicia o monitoramento contínuo
         /// da música tocando. Idempotente - seguro chamar múltiplas vezes.
         /// </summary>
-        public static async Task<HubResult> InitializeAsync(int pollingIntervalMs = 5000, CancellationToken cancellationToken = default)
+        public static async Task<HubResult> InitializeAsync(int? pollingIntervalMs = null, CancellationToken cancellationToken = default)
         {
             if (_isInitialized)
                 return HubResult.Ok("Spotify já estava inicializado.");
@@ -60,7 +60,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 _manager = manager;
 
                 _pollingCts = new CancellationTokenSource();
-                _ = manager.StartPollingAsync(pollingIntervalMs, _pollingCts.Token); // background, não bloqueia
+                _ = manager.StartPollingAsync(pollingIntervalMs ?? spotifyConfig.PollingIntervalMs, _pollingCts.Token);
 
                 _isInitialized = true;
                 return HubResult.Ok("Spotify inicializado e conectado com sucesso.");
@@ -139,7 +139,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
 
         #region Fila
 
-        public static Task<HubResult> GetQueueAsync(int limit = 5, CancellationToken cancellationToken = default)
+        public static Task<HubResult> GetQueueAsync(int? limit = null, CancellationToken cancellationToken = default)
             => ExecuteAsync(
                 () => _manager!.GetQueueAsync(limit, cancellationToken),
                 "Fila obtida com sucesso.",

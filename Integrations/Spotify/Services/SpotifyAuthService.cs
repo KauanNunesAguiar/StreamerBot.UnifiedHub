@@ -74,6 +74,21 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 config.VoteSkipThreshold = threshold;
             }
 
+            // 3.1 Mapeamento de QueueSize
+            if (extra.TryGetValue("QueueSize", out string? rawQueueSize) && int.TryParse(rawQueueSize, out int queueSize) && queueSize > 0)
+                config.QueueSize = queueSize;
+
+            // 3.2 Mapeamento de BotName / BotImageUrl
+            if (extra.TryGetValue("BotName", out string? botName) && !string.IsNullOrWhiteSpace(botName))
+                config.BotName = botName;
+
+            if (extra.TryGetValue("BotImageUrl", out string? botImageUrl))
+                config.BotImageUrl = botImageUrl;
+
+            // 3.3 Mapeamento de PollingIntervalMs
+            if (extra.TryGetValue("PollingIntervalMs", out string? rawPolling) && int.TryParse(rawPolling, out int pollingMs) && pollingMs >= 1000)
+                config.PollingIntervalMs = pollingMs;
+
             // 4. Mapeamento de Mensagens
             foreach (var setting in extra)
             {

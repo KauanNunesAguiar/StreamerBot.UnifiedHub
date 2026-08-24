@@ -96,6 +96,10 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 Playlists = playlists,
                 SelectedPlaylistId = _spotifyConfig?.PlaylistId ?? string.Empty,
                 VoteSkipThreshold = _spotifyConfig?.VoteSkipThreshold ?? 3,
+                QueueSize = _spotifyConfig?.QueueSize ?? 5,
+                BotName = _spotifyConfig?.BotName ?? "Spotify",
+                BotImageUrl = _spotifyConfig?.BotImageUrl ?? string.Empty,
+                PollingIntervalMs = _spotifyConfig?.PollingIntervalMs ?? 5000,
                 Messages = [.. SpotifyMessageCatalog.Definitions.Select(def => new SpotifyMessageInputViewModel
                 {
                     Definition = def,
@@ -121,6 +125,22 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             {
                 result.ExtraSettings["VoteSkipThreshold"] = voteSkipThreshold;
             }
+
+            string? queueSize = formData["queueSize"];
+            if (!string.IsNullOrWhiteSpace(queueSize))
+                result.ExtraSettings["QueueSize"] = queueSize;
+
+            string? botName = formData["botName"];
+            if (!string.IsNullOrWhiteSpace(botName))
+                result.ExtraSettings["BotName"] = botName;
+
+            string? botImageUrl = formData["botImageUrl"];
+            if (botImageUrl != null)
+                result.ExtraSettings["BotImageUrl"] = botImageUrl.Trim();
+
+            string? pollingIntervalMs = formData["pollingIntervalMs"];
+            if (!string.IsNullOrWhiteSpace(pollingIntervalMs))
+                result.ExtraSettings["PollingIntervalMs"] = pollingIntervalMs;
 
             foreach (var definition in SpotifyMessageCatalog.Definitions)
             {
