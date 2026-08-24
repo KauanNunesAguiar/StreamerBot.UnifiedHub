@@ -23,6 +23,13 @@
     </PackageReference>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="SpotifyAPI.Web" Version="7.4.2" />
+    <Compile Remove="Program.Example.cs" />
+    <None Include="Program.Example.cs" />
   </ItemGroup>
 
+  <Target Name="CopyTestProgramAsExample" BeforeTargets="BeforeBuild">
+    <Copy SourceFiles="..\StreamerBot.UnifiedHub.TestApp\Program.cs" 
+          DestinationFiles="Program.Example.cs" 
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>
