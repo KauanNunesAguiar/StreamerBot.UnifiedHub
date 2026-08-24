@@ -1,4 +1,7 @@
-﻿using Newtonsoft.Json;
+﻿// Esse é um Program.cs que estou usando de teste no projeto "StreamerBot.UnifiedHub.TestApp",
+// ele é copiado automáticamente após cada complilação
+
+using Newtonsoft.Json;
 using StreamerBot.UnifiedHub.Core.Models;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Hubs;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
