@@ -22,23 +22,6 @@ namespace StreamerBot.UnifiedHub.TestApp
 
             using var cts = new CancellationTokenSource();
 
-            // Inscreve nos eventos do Hub
-            SpotifyHub.OnTrackChanged += (sender, trackInfo) =>
-            {
-                if (trackInfo?.Player?.IsPlaying == true && !string.IsNullOrEmpty(trackInfo.Identifiers?.Id))
-                {
-                    string explicitTag = trackInfo.Media.IsExplicit ? " [EXPLÍCITO]" : "";
-                    Console.WriteLine($"\n🎶 NOVA MÚSICA TOCANDO: {trackInfo.Media.Title}{explicitTag} - {trackInfo.Media.Artist}");
-                    Console.WriteLine($" Álbum: {trackInfo.Media.Album}");
-                    Console.WriteLine($" URL: {trackInfo.Identifiers.Url}");
-                    Console.WriteLine($" Capa: {trackInfo.Media.AlbumArtUrl}\n");
-                }
-                else
-                {
-                    Console.WriteLine("\n⏸️ PLAYBACK PARADO: Nenhuma música sendo reproduzida no momento.\n");
-                }
-            };
-
             SpotifyHub.OnChatMessage += (sender, args) =>
             {
                 Console.WriteLine($"[CHAT] {args.Message}");
@@ -59,7 +42,7 @@ namespace StreamerBot.UnifiedHub.TestApp
 
                 Console.WriteLine($" Conectado ao Spotify via Hub!");
                 Console.WriteLine(" Comandos disponíveis:");
-                Console.WriteLine(" - 'play' | 'pause' | 'next' | 'prev' | 'vol x' | 'add x' | 'undo' | 'atual' | 'fila' | 'addplaylist' | 'skip' | 'voteskip' | 'config' | 'sair'\n");
+                Console.WriteLine(" - 'play' | 'pause' | 'prev' | 'vol x' | 'add x' | 'undo' | 'atual' | 'playlist' | 'fila' | 'addplaylist' | 'skip' | 'voteskip' | 'songHelp' | 'config' | 'sair'\n");
 
                 inputTask = Task.Run(async () =>
                 {
@@ -80,10 +63,6 @@ namespace StreamerBot.UnifiedHub.TestApp
 
                                 case "pause":
                                     PrintHubResult(await SpotifyHub.PauseAsync(userName, cts.Token));
-                                    break;
-
-                                case "next":
-                                    PrintHubResult(await SpotifyHub.NextAsync(userName, cts.Token));
                                     break;
 
                                 case "prev":
@@ -117,6 +96,10 @@ namespace StreamerBot.UnifiedHub.TestApp
                                     PrintHubResult(await SpotifyHub.RemoveLastAddedFromQueueAsync(userId, isModOrStreamer, cts.Token));
                                     break;
 
+                                case "playlist":
+                                    PrintHubResult(await SpotifyHub.ShowPlaylistInfoAsync(cts.Token));
+                                    break;
+
                                 case "atual":
                                     var currentResult = await SpotifyHub.GetCurrentTrackAsync(cts.Token);
                                     if (currentResult.Success && !string.IsNullOrEmpty(currentResult.Data))
@@ -136,7 +119,7 @@ namespace StreamerBot.UnifiedHub.TestApp
                                     break;
 
                                 case "fila":
-                                    var queueResult = await SpotifyHub.GetQueueAsync(5, cts.Token);
+                                    var queueResult = await SpotifyHub.GetQueueAsync(cancellationToken: cts.Token);
                                     if (queueResult.Success && !string.IsNullOrEmpty(queueResult.Data))
                                     {
                                         var queue = JsonConvert.DeserializeObject<List<SpotifyTrackInfo>>(queueResult.Data);
@@ -181,6 +164,10 @@ namespace StreamerBot.UnifiedHub.TestApp
                                     {
                                         Console.WriteLine($"⚠️ {voteResult.Message}");
                                     }
+                                    break;
+
+                                case "songHelp":
+                                    PrintHubResult(await SpotifyHub.ShowSongHelpAsync(userName, cts.Token));
                                     break;
 
                                 case "config":

@@ -69,7 +69,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                                 Log($"[UNDO AUTO] A música '{track.Name}' foi desfeita. Pulando automaticamente...");
                                 _canceledTrackUris.TryRemove(track.Uri, out _);
 
-                                await SkipToNextAsync();
+                                await _spotifyClient!.Player.SkipNext(cancellationToken);
 
                                 lock (_userRequestedQueue)
                                 {
@@ -171,12 +171,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             OnPlayerUpdated?.Invoke(this, CurrentTrackInfo);
         }
 
-        public async Task SkipToNextAsync(CancellationToken cancellationToken = default)
-        {
-            EnsureInitialized();
-            await _spotifyClient!.Player.SkipNext(cancellationToken);
-        }
-
         public async Task SkipToPreviousAsync(CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
@@ -209,7 +203,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             string skippedTrackUri = current.Identifiers.Uri;
             string skippedTrackTitle = current.Media.Title;
 
-            await SkipToNextAsync(cancellationToken);
+            await _spotifyClient!.Player.SkipNext(cancellationToken);
             ClearVoteSkip(skippedTrackUri);
 
             Log($"Música '{skippedTrackTitle}' pulada manualmente.");
@@ -240,14 +234,14 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 return new VoteSkipResult(
                     false,
                     $"Você já votou para pular '{trackTitle}'. ({voters.Count}/{requiredVotes} votos)",
-                    voters.Count, requiredVotes, false);
+                    voters.Count, requiredVotes, false, AlreadyVoted: true);
             }
 
             int currentVotes = voters.Count;
 
             if (currentVotes >= requiredVotes)
             {
-                await SkipToNextAsync(cancellationToken);
+                await _spotifyClient!.Player.SkipNext(cancellationToken);
                 ClearVoteSkip(trackUri);
 
                 Log($"Música '{trackTitle}' pulada por votação ({currentVotes}/{requiredVotes}).");
@@ -341,7 +335,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 {
                     if (item is FullTrack track)
                     {
-                        if (!string.IsNullOrEmpty(track.Uri) && existingUris.Contains(track.Uri))
+                        if (!string.IsNullOrEmpty(track.Uri) &&
+                            (existingUris.Contains(track.Uri) || _canceledTrackUris.ContainsKey(track.Uri)))
                             continue;
 
                         finalQueue.Add(MapToTrackInfo(track));

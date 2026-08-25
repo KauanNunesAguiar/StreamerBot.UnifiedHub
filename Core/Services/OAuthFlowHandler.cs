@@ -12,6 +12,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
         private readonly ILocalHttpServer _httpServer = httpServer;
         private readonly IBrowserService _browserService = browserService;
         private readonly IOAuthFlowStrategy _strategy = strategy;
+        private static readonly TimeSpan InactivityTimeout = TimeSpan.FromMinutes(10);
 
         public async Task<OAuthResult> RunAsync(
             string clientId,
@@ -31,7 +32,8 @@ namespace StreamerBot.UnifiedHub.Core.Services
             OAuthResult? pendingResult = null;
             bool awaitingPostAuthSubmission = false;
 
-            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            using var timeoutCts = new CancellationTokenSource();
+            using var inactivityTimer = new Timer(_ => timeoutCts.Cancel(), null, InactivityTimeout, Timeout.InfiniteTimeSpan);
             using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
             try
@@ -39,8 +41,9 @@ namespace StreamerBot.UnifiedHub.Core.Services
                 while (!linkedCts.Token.IsCancellationRequested)
                 {
                     // Passa o linkedCts.Token diretamente para evitar orphaned tasks
-                    var context = await _httpServer.WaitForRequestAsync(linkedCts.Token);
-                    if (context == null) throw new OperationCanceledException("Servidor encerrado.");
+                    var context = await _httpServer.WaitForRequestAsync(linkedCts.Token) ?? throw new OperationCanceledException("Servidor encerrado.");
+
+                    inactivityTimer.Change(InactivityTimeout, Timeout.InfiniteTimeSpan);
 
                     string rawUrl = context.RawUrl ?? string.Empty;
 

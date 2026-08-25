@@ -100,10 +100,25 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 BotName = _spotifyConfig?.BotName ?? "Spotify",
                 BotImageUrl = _spotifyConfig?.BotImageUrl ?? string.Empty,
                 PollingIntervalMs = _spotifyConfig?.PollingIntervalMs ?? 5000,
-                Messages = [.. SpotifyMessageCatalog.Definitions.Select(def => new SpotifyMessageInputViewModel
+                Messages = [.. SpotifyMessageCatalog.Definitions.Select(def =>
                 {
-                    Definition = def,
-                    Value = _spotifyConfig != null && _spotifyConfig.Messages.TryGetValue(def.Key, out var v) ? v : string.Empty
+                    bool isEnabled = true;
+                    _spotifyConfig?.MessageEnabled.TryGetValue(def.Key, out isEnabled);
+                    if (_spotifyConfig != null && !_spotifyConfig.MessageEnabled.ContainsKey(def.Key))
+                        isEnabled = true;
+
+                    return new SpotifyMessageInputViewModel
+                    {
+                        Definition = new MessageDefinition
+                        {
+                            Key = def.Key,
+                            Label = def.Label,
+                            Description = def.Description,
+                            Placeholders = def.Placeholders,
+                            Enabled = isEnabled
+                        },
+                        Value = _spotifyConfig != null && _spotifyConfig.Messages.TryGetValue(def.Key, out var v) ? v : string.Empty
+                    };
                 })]
             };
 
@@ -150,6 +165,10 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 {
                     result.ExtraSettings[$"Msg:{definition.Key}"] = value;
                 }
+
+                // Checkbox HTML só vem no formData quando marcado - ausência = desmarcado
+                bool isChecked = !string.IsNullOrEmpty(formData[$"msgEnabled_{definition.Key}"]);
+                result.ExtraSettings[$"MsgEnabled:{definition.Key}"] = isChecked.ToString();
             }
 
             return Task.FromResult<string?>(null);

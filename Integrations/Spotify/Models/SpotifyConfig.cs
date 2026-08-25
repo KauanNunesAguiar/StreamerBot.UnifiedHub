@@ -14,6 +14,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
 
         // Dicionário de mensagens customizadas pelo usuário (Key -> Template)
         public Dictionary<string, string> Messages { get; set; } = [];
+        public Dictionary<string, bool> MessageEnabled { get; set; } = [];
 
         public override string ToString()
         {

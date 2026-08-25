@@ -38,10 +38,10 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         }
 
         public static async Task<SpotifyClient> ReconfigureAsync(
-    SpotifyConfig config,
-    SpotifyOAuthHandler oauthHandler,
-    IConfigManager? configManager = null,
-    CancellationToken cancellationToken = default)
+            SpotifyConfig config,
+            SpotifyOAuthHandler oauthHandler,
+            IConfigManager? configManager = null,
+            CancellationToken cancellationToken = default)
         {
             Log("[DEBUG] Iniciando ReconfigureAsync...");
 
@@ -96,6 +96,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 {
                     string msgKey = setting.Key["Msg:".Length..];
                     config.Messages[msgKey] = setting.Value;
+                }
+                else if (setting.Key.StartsWith("MsgEnabled:", StringComparison.OrdinalIgnoreCase))
+                {
+                    string msgKey = setting.Key["MsgEnabled:".Length..];
+                    if (bool.TryParse(setting.Value, out bool enabled))
+                        config.MessageEnabled[msgKey] = enabled;
                 }
             }
 

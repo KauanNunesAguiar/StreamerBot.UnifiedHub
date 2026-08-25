@@ -15,6 +15,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
         private static volatile bool _isInitialized;
 
         public static bool IsInitialized => _isInitialized;
+        private static Func<IEnumerable<HubCommandInfo>>? _commandProvider;
 
         public static event EventHandler<SpotifyTrackInfo>? OnTrackChanged;
         public static event EventHandler<SpotifyTrackInfo>? OnPlayerUpdated;
@@ -82,6 +83,9 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 "Reconfiguração concluída com sucesso.",
                 "reconfigurar o Spotify");
 
+        public static void SetCommandProvider(Func<IEnumerable<HubCommandInfo>> provider)
+            => _commandProvider = provider;
+
         #endregion
 
         #region Player
@@ -97,12 +101,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 async () => { await _manager!.ResumeAsync(user, cancellationToken); },
                 "Reprodução retomada.",
                 "retomar a música");
-
-        public static Task<HubResult> NextAsync(string user = "", CancellationToken cancellationToken = default)
-            => ExecuteAsync(
-                async () => { await _manager!.SkipToNextAsync(user, cancellationToken); },
-                "Música pulada para a próxima.",
-                "pular para a próxima música");
 
         public static Task<HubResult> PreviousAsync(string user = "", CancellationToken cancellationToken = default)
             => ExecuteAsync(
@@ -187,6 +185,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
 
         #region Playlist / Skip
 
+        public static Task<HubResult> ShowPlaylistInfoAsync(CancellationToken cancellationToken = default)
+            => ExecuteAsync(
+                () => _manager!.ShowPlaylistInfoAsync(cancellationToken),
+                "Informações da playlist exibidas.",
+                "exibir as informações da playlist");
+
         public static async Task<HubResult> AddCurrentTrackToPlaylistAsync(string user = "", CancellationToken cancellationToken = default)
         {
             try
@@ -229,6 +233,48 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
             {
                 return HubResult.Fail(BuildFriendlyError(ex, "registrar o voto de skip"));
             }
+        }
+
+        public static Task<HubResult> NotifyNoPermissionAsync(string user = "", CancellationToken cancellationToken = default)
+            => ExecuteAsync(
+                async () => { _manager!.NotifyNoPermission(user); await Task.CompletedTask; },
+                "Mensagem de sem permissão enviada.",
+                "notificar falta de permissão");
+
+        public static Task<HubResult> ShowSongHelpAsync(string user = "", CancellationToken cancellationToken = default)
+            => ExecuteAsync(
+                async () =>
+                {
+                    string listaComandos = BuildCommandsListText();
+                    _manager!.ShowHelp(user, listaComandos);
+                    await Task.CompletedTask;
+                },
+                "Ajuda exibida.",
+                "exibir a ajuda");
+
+        private static string BuildCommandsListText()
+        {
+            if (_commandProvider == null)
+                return "Lista de comandos indisponível (SetCommandProvider não foi configurado).";
+
+            var commands = _commandProvider();
+            var linhas = new List<string>();
+
+            foreach (var def in SpotifyMessageCatalog.Definitions)
+            {
+                var match = commands.FirstOrDefault(c =>
+                    c.Enabled &&
+                    c.Commands.Count > 0 &&
+                    string.Equals(c.Name, def.Key, StringComparison.OrdinalIgnoreCase));
+
+                if (match == null)
+                    continue;
+
+                string triggers = string.Join("/", match.Commands);
+                linhas.Add($"{triggers} - {def.Label}");
+            }
+
+            return linhas.Count > 0 ? string.Join(" | ", linhas) : "Nenhum comando encontrado.";
         }
 
         #endregion
