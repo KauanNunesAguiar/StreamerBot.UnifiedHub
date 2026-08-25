@@ -1,8 +1,13 @@
 using System.Net.Http.Json;
 
-namespace StreamerBot.UnifiedHub.Integrations.Youtube.Services
+namespace StreamerBot.UnifiedHub.Core.Services
 {
-    public class YouTubeService(HttpClient httpClient)
+    /// <summary>
+    /// Consulta o endpoint público oEmbed do YouTube para resolver o título de um vídeo
+    /// a partir da URL. Não é a integração YouTube (chat/live) - é apenas um helper de
+    /// lookup usado por outras integrações (ex: Spotify) para resolver links do YouTube.
+    /// </summary>
+    public class YouTubeOEmbedLookup(HttpClient httpClient)
     {
         private readonly HttpClient _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
 

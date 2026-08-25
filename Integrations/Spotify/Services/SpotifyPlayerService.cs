@@ -1,17 +1,17 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using SpotifyAPI.Web;
+using StreamerBot.UnifiedHub.Core.Services;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
-using StreamerBot.UnifiedHub.Integrations.Youtube.Services;
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 {
-    public class SpotifyPlayerService(YouTubeService youTubeService) : IDisposable
+    public class SpotifyPlayerService(YouTubeOEmbedLookup youTubeService) : IDisposable
     {
         #region Fields
 
         private bool _disposed;
-        private readonly YouTubeService _youTubeService = youTubeService ?? throw new ArgumentNullException(nameof(youTubeService));
+        private readonly YouTubeOEmbedLookup _youTubeService = youTubeService ?? throw new ArgumentNullException(nameof(youTubeService));
         private SpotifyClient? _spotifyClient;
         private string _lastTrackUri = string.Empty;
 

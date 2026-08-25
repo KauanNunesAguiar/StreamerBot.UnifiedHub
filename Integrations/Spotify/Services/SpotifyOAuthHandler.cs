@@ -10,8 +10,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         IBrowserService browserService,
         IConfigManager? configManager = null)
     {
-        private readonly ILocalHttpServer _localHttpServer = httpServer;
-        private readonly IBrowserService _spotifyBrowserService = browserService;
+        private readonly OAuthHandler _oauthHandler = new(httpServer, browserService);
         private readonly IConfigManager? _configManager = configManager;
 
         public async Task<OAuthResult> AuthenticateUserAsync(
@@ -26,9 +25,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 : config.RedirectUri;
 
             var strategy = new SpotifyOAuthStrategy(config, _configManager);
-            var flowHandler = new OAuthFlowHandler(_localHttpServer, _spotifyBrowserService, strategy);
 
-            return await flowHandler.RunAsync(config.ClientId, config.ClientSecret, redirectUri, cancellationToken);
+            return await _oauthHandler.AuthenticateUserAsync(strategy, config.ClientId, config.ClientSecret, redirectUri, cancellationToken);
         }
     }
 }

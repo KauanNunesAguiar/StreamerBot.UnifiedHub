@@ -1,6 +1,7 @@
 using Newtonsoft.Json;
 using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Core.Abstractions;
+using StreamerBot.UnifiedHub.Core.Services;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Extensions;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 
@@ -78,32 +79,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             if (extra.TryGetValue("QueueSize", out string? rawQueueSize) && int.TryParse(rawQueueSize, out int queueSize) && queueSize > 0)
                 config.QueueSize = queueSize;
 
-            // 3.2 Mapeamento de BotName / BotImageUrl
-            if (extra.TryGetValue("BotName", out string? botName) && !string.IsNullOrWhiteSpace(botName))
-                config.BotName = botName;
-
-            if (extra.TryGetValue("BotImageUrl", out string? botImageUrl))
-                config.BotImageUrl = botImageUrl;
-
-            // 3.3 Mapeamento de PollingIntervalMs
-            if (extra.TryGetValue("PollingIntervalMs", out string? rawPolling) && int.TryParse(rawPolling, out int pollingMs) && pollingMs >= 1000)
-                config.PollingIntervalMs = pollingMs;
-
-            // 4. Mapeamento de Mensagens
-            foreach (var setting in extra)
-            {
-                if (setting.Key.StartsWith("Msg:", StringComparison.OrdinalIgnoreCase))
-                {
-                    string msgKey = setting.Key["Msg:".Length..];
-                    config.Messages[msgKey] = setting.Value;
-                }
-                else if (setting.Key.StartsWith("MsgEnabled:", StringComparison.OrdinalIgnoreCase))
-                {
-                    string msgKey = setting.Key["MsgEnabled:".Length..];
-                    if (bool.TryParse(setting.Value, out bool enabled))
-                        config.MessageEnabled[msgKey] = enabled;
-                }
-            }
+            // 4. Campos comuns a qualquer integração de chat
+            ChatIntegrationConfigMapper.ApplyExtraSettings(config, extra);
 
             // 5. Gera o novo SpotifyClient com o RefreshToken RECENTE obtido da web
             var client = await CreateClientFromRefreshTokenAsync(

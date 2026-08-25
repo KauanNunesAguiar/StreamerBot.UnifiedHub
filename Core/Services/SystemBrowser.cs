@@ -21,6 +21,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
                         FileName = url,
                         UseShellExecute = true
                     });
+                    return true;
                 }
 
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))

@@ -46,7 +46,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         public async Task<string> RenderFormHtml(string clientId, string clientSecret, string? erro)
         {
-            var model = new SpotifyLoginViewModel
+            var model = new OAuthLoginViewModel
             {
                 ClientId = clientId,
                 ClientSecret = clientSecret,
@@ -107,7 +107,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                     if (_spotifyConfig != null && !_spotifyConfig.MessageEnabled.ContainsKey(def.Key))
                         isEnabled = true;
 
-                    return new SpotifyMessageInputViewModel
+                    return new MessageInputViewModel
                     {
                         Definition = new MessageDefinition
                         {

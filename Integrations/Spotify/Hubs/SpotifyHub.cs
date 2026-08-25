@@ -3,7 +3,7 @@ using StreamerBot.UnifiedHub.Core.Services;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Extensions;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Services;
-using StreamerBot.UnifiedHub.Integrations.Youtube.Services;
+
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
 {
@@ -15,6 +15,10 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
         private static volatile bool _isInitialized;
 
         public static bool IsInitialized => _isInitialized;
+
+        private static readonly HubExecutionHelper _executor = new(
+            () => _isInitialized && _manager != null,
+            "O SpotifyHub ainda não foi inicializado. Chame 'SpotifyHub.InitializeAsync()' antes de executar qualquer ação (normalmente numa subação de inicialização, disparada no início da live).");
         private static Func<IEnumerable<HubCommandInfo>>? _commandProvider;
 
         public static event EventHandler<SpotifyTrackInfo>? OnTrackChanged;
@@ -47,8 +51,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 var browserService = new SystemBrowser();
                 var oauthHandler = new SpotifyOAuthHandler(httpServer, browserService, configManager);
 
-                var youTubeService = new YouTubeService(HubServiceProvider.GetHttpClient("YouTube"));
-                var playerService = new SpotifyPlayerService(youTubeService);
+                var youTubeLookup = new YouTubeOEmbedLookup(HubServiceProvider.GetHttpClient("YouTube"));
+                var playerService = new SpotifyPlayerService(youTubeLookup);
 
                 var manager = new SpotifyManager(oauthHandler, playerService, spotifyConfig, configManager);
 
@@ -78,7 +82,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
 
         /// <summary>Refaz o fluxo de autenticação/configuração (ex: trocar de conta ou playlist).</summary>
         public static Task<HubResult> ReconfigureAsync(CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 async () => { await _manager!.ReconfigureAsync(cancellationToken); },
                 "Reconfiguração concluída com sucesso.",
                 "reconfigurar o Spotify");
@@ -91,44 +95,37 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
         #region Player
 
         public static Task<HubResult> PauseAsync(string user = "", CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 async () => { await _manager!.PauseAsync(user, cancellationToken); },
                 "Reprodução pausada.",
                 "pausar a música");
 
         public static Task<HubResult> ResumeAsync(string user = "", CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 async () => { await _manager!.ResumeAsync(user, cancellationToken); },
                 "Reprodução retomada.",
                 "retomar a música");
 
         public static Task<HubResult> PreviousAsync(string user = "", CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 async () => { await _manager!.SkipToPreviousAsync(user, cancellationToken); },
                 "Voltou para a música anterior.",
                 "voltar para a música anterior");
 
         public static Task<HubResult> SetVolumeAsync(int volumePercent, string user = "", CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 async () => { await _manager!.SetVolumeAsync(volumePercent, user, cancellationToken); },
                 $"Volume ajustado para {volumePercent}%.",
                 "ajustar o volume");
 
         public static HubResult GetProgressBar()
-        {
-            try
-            {
-                EnsureReady();
-                return HubResult.Ok(_manager!.GetCurrentTrackProgressBar(), "Barra de progresso obtida.");
-            }
-            catch (Exception ex)
-            {
-                return HubResult.Fail(BuildFriendlyError(ex, "obter o progresso da música"));
-            }
-        }
+            => _executor.Execute(
+                () => _manager!.GetCurrentTrackProgressBar(),
+                "Barra de progresso obtida.",
+                "obter o progresso da música");
 
         public static Task<HubResult> GetCurrentTrackAsync(CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 () => _manager!.GetCurrentTrackAsync(cancellationToken),
                 "Música atual obtida.",
                 "obter a música atual");
@@ -138,13 +135,13 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
         #region Fila
 
         public static Task<HubResult> GetQueueAsync(int? limit = null, CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 () => _manager!.GetQueueAsync(limit, cancellationToken),
                 "Fila obtida com sucesso.",
                 "obter a fila de músicas");
 
         public static Task<HubResult> AddToQueueAsync(string input, string userId, string userName, CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 async () =>
                 {
                     var track = await _manager!.AddToQueueAsync(input, userId, userName, cancellationToken);
@@ -152,97 +149,69 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 },
                 "adicionar música à fila");
 
-        public static async Task<HubResult> RemoveLastAddedFromQueueAsync(string userId, bool isModOrStreamer = false, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                EnsureReady();
-                var (success, removedItem, message) = await _manager!.RemoveLastAddedFromQueueAsync(userId, isModOrStreamer, cancellationToken);
-                return success
-                    ? HubResult.Ok(removedItem!, message)
-                    : HubResult.Fail(message);
-            }
-            catch (Exception ex)
-            {
-                return HubResult.Fail(BuildFriendlyError(ex, "remover a última música da fila"));
-            }
-        }
+        public static Task<HubResult> RemoveLastAddedFromQueueAsync(string userId, bool isModOrStreamer = false, CancellationToken cancellationToken = default)
+            => _executor.ExecuteAsync(
+                async () =>
+                {
+                    var (success, removedItem, message) = await _manager!.RemoveLastAddedFromQueueAsync(userId, isModOrStreamer, cancellationToken);
+                    return success ? HubResult.Ok(removedItem!, message) : HubResult.Fail(message);
+                },
+                "remover a última música da fila");
 
         public static HubResult GetPendingUserQueue()
-        {
-            try
-            {
-                EnsureReady();
-                return HubResult.Ok(_manager!.GetPendingUserQueue(), "Fila pendente obtida.");
-            }
-            catch (Exception ex)
-            {
-                return HubResult.Fail(BuildFriendlyError(ex, "obter a fila pendente"));
-            }
-        }
+            => _executor.Execute(
+                () => _manager!.GetPendingUserQueue(),
+                "Fila pendente obtida.",
+                "obter a fila pendente");
 
         #endregion
 
         #region Playlist / Skip
 
         public static Task<HubResult> ShowPlaylistInfoAsync(CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 () => _manager!.ShowPlaylistInfoAsync(cancellationToken),
                 "Informações da playlist exibidas.",
                 "exibir as informações da playlist");
 
-        public static async Task<HubResult> AddCurrentTrackToPlaylistAsync(string user = "", CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                EnsureReady();
-                var (success, message) = await _manager!.AddCurrentTrackToPlaylistAsync(user, cancellationToken);
-                return new HubResult(success, message);
-            }
-            catch (Exception ex)
-            {
-                return HubResult.Fail(BuildFriendlyError(ex, "adicionar a música à playlist"));
-            }
-        }
+        public static Task<HubResult> AddCurrentTrackToPlaylistAsync(string user = "", CancellationToken cancellationToken = default)
+            => _executor.ExecuteAsync(
+                async () =>
+                {
+                    var (success, message) = await _manager!.AddCurrentTrackToPlaylistAsync(user, cancellationToken);
+                    return new HubResult(success, message);
+                },
+                "adicionar a música à playlist");
 
-        public static async Task<HubResult> ForceSkipAsync(string user = "", CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                EnsureReady();
-                var (success, message) = await _manager!.ForceSkipAsync(user, cancellationToken);
-                return new HubResult(success, message);
-            }
-            catch (Exception ex)
-            {
-                return HubResult.Fail(BuildFriendlyError(ex, "pular a música"));
-            }
-        }
+        public static Task<HubResult> ForceSkipAsync(string user = "", CancellationToken cancellationToken = default)
+            => _executor.ExecuteAsync(
+                async () =>
+                {
+                    var (success, message) = await _manager!.ForceSkipAsync(user, cancellationToken);
+                    return new HubResult(success, message);
+                },
+                "pular a música");
 
-        public static async Task<HubResult> VoteSkipAsync(string userId, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                EnsureReady();
-                var voteResult = await _manager!.VoteSkipAsync(userId, cancellationToken);
-                return voteResult.Accepted
-                    ? HubResult.Ok(voteResult, voteResult.Message)
-                    : HubResult.Fail(voteResult.Message);
-            }
-            catch (Exception ex)
-            {
-                return HubResult.Fail(BuildFriendlyError(ex, "registrar o voto de skip"));
-            }
-        }
+
+        public static Task<HubResult> VoteSkipAsync(string userId, CancellationToken cancellationToken = default)
+            => _executor.ExecuteAsync(
+                async () =>
+                {
+                    var voteResult = await _manager!.VoteSkipAsync(userId, cancellationToken);
+                    return voteResult.Accepted
+                        ? HubResult.Ok(voteResult, voteResult.Message)
+                        : HubResult.Fail(voteResult.Message);
+                },
+                "registrar o voto de skip");
 
         public static Task<HubResult> NotifyNoPermissionAsync(string user = "", CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 async () => { _manager!.NotifyNoPermission(user); await Task.CompletedTask; },
                 "Mensagem de sem permissão enviada.",
                 "notificar falta de permissão");
 
         public static Task<HubResult> ShowSongHelpAsync(string user = "", CancellationToken cancellationToken = default)
-            => ExecuteAsync(
+            => _executor.ExecuteAsync(
                 async () =>
                 {
                     string listaComandos = BuildCommandsListText();
@@ -257,24 +226,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
             if (_commandProvider == null)
                 return "Lista de comandos indisponível (SetCommandProvider não foi configurado).";
 
-            var commands = _commandProvider();
-            var linhas = new List<string>();
-
-            foreach (var def in SpotifyMessageCatalog.Definitions)
-            {
-                var match = commands.FirstOrDefault(c =>
-                    c.Enabled &&
-                    c.Commands.Count > 0 &&
-                    string.Equals(c.Name, def.Key, StringComparison.OrdinalIgnoreCase));
-
-                if (match == null)
-                    continue;
-
-                string triggers = string.Join("/", match.Commands);
-                linhas.Add($"{triggers} - {def.Label}");
-            }
-
-            return linhas.Count > 0 ? string.Join(" | ", linhas) : "Nenhum comando encontrado.";
+            return CommandHelpTextBuilder.Build(SpotifyMessageCatalog.Definitions, _commandProvider());
         }
 
         #endregion
@@ -294,61 +246,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
 
         #region Helpers Internos
 
-        private static void EnsureReady()
-        {
-            if (!_isInitialized || _manager == null)
-                throw new InvalidOperationException(
-                    "O SpotifyHub ainda não foi inicializado. Chame 'SpotifyHub.InitializeAsync()' antes de executar qualquer ação (normalmente numa subação de inicialização, disparada no início da live).");
-        }
-
         private static string BuildFriendlyError(Exception ex, string acao) => ex switch
         {
             InvalidOperationException => ex.Message,
             OperationCanceledException => $"A operação de {acao} foi cancelada.",
             _ => $"Erro ao {acao}: {ex.Message}"
         };
-
-        private static async Task<HubResult> ExecuteAsync(Func<Task> action, string successMessage, string acao)
-        {
-            try
-            {
-                EnsureReady();
-                await action();
-                return HubResult.Ok(successMessage);
-            }
-            catch (Exception ex)
-            {
-                return HubResult.Fail(BuildFriendlyError(ex, acao));
-            }
-        }
-
-        private static async Task<HubResult> ExecuteAsync<T>(Func<Task<T>> action, string successMessage, string acao)
-        {
-            try
-            {
-                EnsureReady();
-                var data = await action();
-                return HubResult.Ok(data!, successMessage);
-            }
-            catch (Exception ex)
-            {
-                return HubResult.Fail(BuildFriendlyError(ex, acao));
-            }
-        }
-
-        private static async Task<HubResult> ExecuteAsync<T>(Func<Task<(T Data, string Message)>> action, string acao)
-        {
-            try
-            {
-                EnsureReady();
-                var (data, message) = await action();
-                return HubResult.Ok(data!, message);
-            }
-            catch (Exception ex)
-            {
-                return HubResult.Fail(BuildFriendlyError(ex, acao));
-            }
-        }
 
         #endregion
     }
