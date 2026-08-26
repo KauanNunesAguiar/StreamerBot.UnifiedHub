@@ -1,9 +1,11 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using StreamerBot.UnifiedHub.Core.Models;
 using StreamerBot.UnifiedHub.Core.Services;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Extensions;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Services;
-
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
 {
@@ -87,8 +89,60 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 "Reconfiguração concluída com sucesso.",
                 "reconfigurar o Spotify");
 
+        /// <summary>Abre o navegador direto na tela de configurações (playlist/mensagens), sem repetir o login.</summary>
+        public static Task<HubResult> OpenSettingsUiAsync(CancellationToken cancellationToken = default)
+            => _executor.ExecuteAsync(
+                () => _manager!.OpenSettingsUiAsync(cancellationToken),
+                "abrir as configurações");
+
         public static void SetCommandProvider(Func<IEnumerable<HubCommandInfo>> provider)
             => _commandProvider = provider;
+
+        #endregion
+
+        #region Configurações Rápidas
+
+        public static HubResult GetSettings()
+            => _executor.Execute(
+                () => _manager!.GetSettingsSnapshot(),
+                "Configurações obtidas.",
+                "obter as configurações");
+
+        public static HubResult SetVoteSkipThreshold(int threshold)
+            => _executor.Execute(
+                () => _manager!.UpdateSettings(c => c.VoteSkipThreshold = threshold),
+                $"Limite de voto para pular ajustado para {threshold}.",
+                "ajustar o limite de voteskip");
+
+        public static HubResult SetQueueSize(int size)
+            => _executor.Execute(
+                () => _manager!.UpdateSettings(c => c.QueueSize = size),
+                $"Tamanho da fila exibida ajustado para {size}.",
+                "ajustar o tamanho da fila");
+
+        public static HubResult SetPollingIntervalMs(int intervalMs)
+            => _executor.Execute(
+                () => _manager!.UpdateSettings(c => c.PollingIntervalMs = intervalMs),
+                $"Intervalo de monitoramento ajustado para {intervalMs}ms.",
+                "ajustar o intervalo de monitoramento");
+
+        public static HubResult SetBotName(string botName)
+            => _executor.Execute(
+                () => _manager!.UpdateSettings(c => c.BotName = botName),
+                $"Nome do bot ajustado para '{botName}'.",
+                "ajustar o nome do bot");
+
+        public static HubResult SetMessageEnabled(string key, bool enabled)
+            => _executor.Execute(
+                () => _manager!.UpdateSettings(c => c.MessageEnabled[key] = enabled),
+                $"Mensagem '{key}' {(enabled ? "habilitada" : "desabilitada")}.",
+                "alterar o estado da mensagem");
+
+        public static HubResult SetMessageTemplate(string key, string template)
+            => _executor.Execute(
+                () => _manager!.UpdateSettings(c => c.Messages[key] = template),
+                $"Mensagem '{key}' atualizada.",
+                "atualizar o texto da mensagem");
 
         #endregion
 

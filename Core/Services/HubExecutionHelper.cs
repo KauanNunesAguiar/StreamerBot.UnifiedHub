@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using StreamerBot.UnifiedHub.Core.Models;
 
 namespace StreamerBot.UnifiedHub.Core.Services
@@ -40,6 +43,12 @@ namespace StreamerBot.UnifiedHub.Core.Services
             catch (Exception ex) { return HubResult.Fail(BuildFriendlyError(ex, acao)); }
         }
 
+        public HubResult Execute(Action action, string successMessage, string acao)
+        {
+            try { EnsureReady(); action(); return HubResult.Ok(successMessage); }
+            catch (Exception ex) { return HubResult.Fail(BuildFriendlyError(ex, acao)); }
+        }
+
         public HubResult Execute<T>(Func<T> action, string successMessage, string acao)
         {
             try { EnsureReady(); var data = action(); return HubResult.Ok(data!, successMessage); }
@@ -50,7 +59,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
         {
             InvalidOperationException => ex.Message,
             OperationCanceledException => $"A operação de {acao} foi cancelada.",
-            _ => $"Erro ao {acao}: {ex.Message}"
+            _ => $"Erro ao {acao}: {ex}"
         };
     }
 }

@@ -1,6 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Models;
 using StreamerBot.UnifiedHub.Core.Services;
+using StreamerBot.UnifiedHub.Integrations.Spotify.Extensions;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
@@ -49,6 +53,25 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         {
             var spotifyClient = await SpotifyAuthService.ReconfigureAsync(_config, _oauthHandler, _configManager, cancellationToken);
             _playerService.SetClient(spotifyClient);
+        }
+
+        public async Task<HubResult> OpenSettingsUiAsync(CancellationToken cancellationToken = default)
+        {
+            var result = await _oauthHandler.OpenSettingsAsync(_config, cancellationToken);
+            if (result == null)
+                return HubResult.Fail("Nenhuma alteração foi salva.");
+
+            var extra = new Dictionary<string, string>(result.ExtraSettings, StringComparer.OrdinalIgnoreCase);
+            SpotifyAuthService.ApplyExtraSettingsToConfig(_config, extra);
+
+            if (_configManager != null)
+            {
+                var appConfig = _configManager.Load();
+                appConfig.SetSpotifyConfig(_config);
+                _configManager.Save(appConfig);
+            }
+
+            return HubResult.Ok("Configurações atualizadas com sucesso.");
         }
 
         #region Repasse de Controles do Player e Fila
@@ -234,6 +257,27 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 _dispatcher.Raise(SpotifyMessageCatalog.Keys.AddToPlaylist, new() { ["user"] = user, ["musica"] = track.Media.Title });
             return result;
         }
+
+        public HubResult UpdateSettings(Action<SpotifyConfig> mutate)
+        {
+            mutate(_config);
+
+            if (_configManager != null)
+            {
+                var appConfig = _configManager.Load();
+                appConfig.SetSpotifyConfig(_config);
+                _configManager.Save(appConfig);
+            }
+
+            return HubResult.Ok("Configurações salvas.");
+        }
+
+        public SpotifySettingsSnapshot GetSettingsSnapshot() => new(
+            _config.PlaylistId,
+            _config.VoteSkipThreshold,
+            _config.QueueSize,
+            _config.BotName,
+            _config.PollingIntervalMs);
 
         #endregion
 

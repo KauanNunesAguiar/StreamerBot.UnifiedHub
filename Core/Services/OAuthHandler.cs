@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Models;
 
@@ -22,6 +25,16 @@ namespace StreamerBot.UnifiedHub.Core.Services
         {
             var flowHandler = new OAuthFlowHandler(_localHttpServer, _browserService, strategy);
             return await flowHandler.RunAsync(clientId, clientSecret, redirectUri, cancellationToken);
+        }
+
+        public async Task<OAuthResult?> OpenSettingsAsync(
+            IOAuthFlowStrategy strategy,
+            OAuthResult current,
+            string redirectUri,
+            CancellationToken cancellationToken = default)
+        {
+            var flowHandler = new SettingsOnlyFlowHandler(_localHttpServer, _browserService, strategy);
+            return await flowHandler.RunAsync(current, redirectUri, cancellationToken);
         }
     }
 }

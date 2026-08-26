@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text;
 using System.Threading.Channels;
 using EmbedIO;
@@ -40,7 +42,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
         private async Task HandleRequestAsync(IHttpContext ctx)
         {
             // Mantém a requisição "presa" até o consumidor (OAuthFlowHandler) decidir a resposta.
-            var responseReady = new TaskCompletionSource();
+            var responseReady = new System.Threading.Tasks.TaskCompletionSource<bool>();
 
             string body = string.Empty;
             if (ctx.Request.HttpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase))
@@ -54,17 +56,17 @@ namespace StreamerBot.UnifiedHub.Core.Services
                 RespondHtml = (html, contentType) =>
                 {
                     ctx.SendStringAsync(html, contentType, Encoding.UTF8).Wait();
-                    responseReady.TrySetResult();
+                    responseReady.TrySetResult(true);
                 },
                 RespondStatusCode = statusCode =>
                 {
                     ctx.Response.StatusCode = statusCode;
-                    responseReady.TrySetResult();
+                    responseReady.TrySetResult(true);
                 },
                 Redirect = url =>
                 {
                     ctx.Redirect(url);
-                    responseReady.TrySetResult();
+                    responseReady.TrySetResult(true);
                 }
             };
 

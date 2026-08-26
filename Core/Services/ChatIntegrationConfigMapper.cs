@@ -1,9 +1,12 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using StreamerBot.UnifiedHub.Core.Models;
 
 namespace StreamerBot.UnifiedHub.Core.Services
 {
     /// <summary>
-    /// Aplica os campos comuns de ChatIntegrationConfig (BotName, BotImageUrl,
+    /// Aplica os campos comuns de ChatIntegrationConfig (BotName,
     /// PollingIntervalMs, Messages, MessageEnabled) a partir do dicionário de
     /// ExtraSettings retornado pelo fluxo de OAuth. Reutilizável por qualquer
     /// integração que tenha uma etapa pós-auth de configuração de chat.
@@ -15,9 +18,6 @@ namespace StreamerBot.UnifiedHub.Core.Services
             if (extra.TryGetValue("BotName", out string? botName) && !string.IsNullOrWhiteSpace(botName))
                 config.BotName = botName;
 
-            if (extra.TryGetValue("BotImageUrl", out string? botImageUrl))
-                config.BotImageUrl = botImageUrl;
-
             if (extra.TryGetValue("PollingIntervalMs", out string? rawPolling) && int.TryParse(rawPolling, out int pollingMs) && pollingMs >= 1000)
                 config.PollingIntervalMs = pollingMs;
 
@@ -25,12 +25,12 @@ namespace StreamerBot.UnifiedHub.Core.Services
             {
                 if (setting.Key.StartsWith("Msg:", StringComparison.OrdinalIgnoreCase))
                 {
-                    string msgKey = setting.Key["Msg:".Length..];
+                    string msgKey = setting.Key.Substring("Msg:".Length);
                     config.Messages[msgKey] = setting.Value;
                 }
                 else if (setting.Key.StartsWith("MsgEnabled:", StringComparison.OrdinalIgnoreCase))
                 {
-                    string msgKey = setting.Key["MsgEnabled:".Length..];
+                    string msgKey = setting.Key.Substring("MsgEnabled:".Length);
                     if (bool.TryParse(setting.Value, out bool enabled))
                         config.MessageEnabled[msgKey] = enabled;
                 }

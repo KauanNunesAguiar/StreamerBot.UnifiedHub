@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using StreamerBot.UnifiedHub.Core.Models;
 
 namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
@@ -10,7 +13,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
         public int VoteSkipThreshold { get; set; } = 3;
         public int QueueSize { get; set; } = 5;
         public string BotName { get; set; } = "Spotify";
-        public string BotImageUrl { get; set; } = string.Empty;
         public int PollingIntervalMs { get; set; } = 5000;
         public List<MessageInputViewModel> Messages { get; set; } = [];
     }

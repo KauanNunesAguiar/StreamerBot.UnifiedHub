@@ -1,5 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using System.Web;
 using StreamerBot.UnifiedHub.Core.Abstractions;
+using StreamerBot.UnifiedHub.Core.Compatibility;
 using StreamerBot.UnifiedHub.Core.Models;
 
 namespace StreamerBot.UnifiedHub.Core.Services

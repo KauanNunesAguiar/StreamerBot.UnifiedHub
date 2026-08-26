@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace StreamerBot.UnifiedHub.Core.Services

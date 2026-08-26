@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using StreamerBot.UnifiedHub.Core.Models;
 
 namespace StreamerBot.UnifiedHub.Core.Services

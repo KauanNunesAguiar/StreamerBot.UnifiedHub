@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using StreamerBot.UnifiedHub.Core.Extensions;
 using StreamerBot.UnifiedHub.Core.Models;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;

@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using Newtonsoft.Json;
 using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Core.Abstractions;
@@ -63,24 +66,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             config.AccessToken = string.Empty; // Reseta para forçar renovação limpa
             config.TokenExpiration = DateTime.MinValue;
 
-            // 2. Mapeamento de Playlist
-            if (extra.TryGetValue("playlistId", out string? playlistId) && !string.IsNullOrWhiteSpace(playlistId))
-            {
-                config.PlaylistId = playlistId;
-            }
-
-            // 3. Mapeamento de VoteSkip
-            if (extra.TryGetValue("voteSkipThreshold", out string? rawThreshold) && int.TryParse(rawThreshold, out int threshold))
-            {
-                config.VoteSkipThreshold = threshold;
-            }
-
-            // 3.1 Mapeamento de QueueSize
-            if (extra.TryGetValue("QueueSize", out string? rawQueueSize) && int.TryParse(rawQueueSize, out int queueSize) && queueSize > 0)
-                config.QueueSize = queueSize;
-
-            // 4. Campos comuns a qualquer integração de chat
-            ChatIntegrationConfigMapper.ApplyExtraSettings(config, extra);
+            ApplyExtraSettingsToConfig(config, extra);
 
             // 5. Gera o novo SpotifyClient com o RefreshToken RECENTE obtido da web
             var client = await CreateClientFromRefreshTokenAsync(
@@ -210,6 +196,24 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             );
 
             return response.RefreshToken;
+        }
+
+        public static void ApplyExtraSettingsToConfig(SpotifyConfig config, IReadOnlyDictionary<string, string> extra)
+        {
+            if (extra.TryGetValue("playlistId", out string? playlistId) && !string.IsNullOrWhiteSpace(playlistId))
+                config.PlaylistId = playlistId;
+            else if (extra.TryGetValue("PlaylistId", out string? playlistId2) && !string.IsNullOrWhiteSpace(playlistId2))
+                config.PlaylistId = playlistId2;
+
+            if (extra.TryGetValue("voteSkipThreshold", out string? rawThreshold) && int.TryParse(rawThreshold, out int threshold))
+                config.VoteSkipThreshold = threshold;
+            else if (extra.TryGetValue("VoteSkipThreshold", out string? rawThreshold2) && int.TryParse(rawThreshold2, out int threshold2))
+                config.VoteSkipThreshold = threshold2;
+
+            if (extra.TryGetValue("QueueSize", out string? rawQueueSize) && int.TryParse(rawQueueSize, out int queueSize) && queueSize > 0)
+                config.QueueSize = queueSize;
+
+            ChatIntegrationConfigMapper.ApplyExtraSettings(config, extra);
         }
 
         private static void Log(string message) => Console.WriteLine($"[SpotifyAuthService] {message}");

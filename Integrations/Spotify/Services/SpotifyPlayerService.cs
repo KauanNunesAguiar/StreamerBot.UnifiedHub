@@ -1,6 +1,10 @@
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Text;
 using SpotifyAPI.Web;
+using StreamerBot.UnifiedHub.Core.Compatibility;
 using StreamerBot.UnifiedHub.Core.Services;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 
@@ -180,7 +184,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         public async Task SetVolumeAsync(int volumePercent, CancellationToken cancellationToken = default)
         {
             EnsureInitialized();
-            int volume = Math.Clamp(volumePercent, 0, 100);
+            int volume = Math.Max(0, Math.Min(100, volumePercent));
             await _spotifyClient!.Player.SetVolume(new PlayerVolumeRequest(volume), cancellationToken);
         }
 
@@ -197,7 +201,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             EnsureInitialized();
 
             var current = CurrentTrackInfo;
-            if (current == null || string.IsNullOrEmpty(current.Identifiers?.Uri) || !current.Player.IsPlaying)
+            if (current == null || string.IsNullOrEmpty(current.Identifiers.Uri) || !current.Player.IsPlaying)
                 return (false, "Nenhuma música tocando no momento para pular.");
 
             string skippedTrackUri = current.Identifiers.Uri;
@@ -221,7 +225,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 requiredVotes = 1;
 
             var current = CurrentTrackInfo;
-            if (current == null || string.IsNullOrEmpty(current.Identifiers?.Uri) || !current.Player.IsPlaying)
+            if (current == null || string.IsNullOrEmpty(current.Identifiers.Uri) || !current.Player.IsPlaying)
                 return new VoteSkipResult(false, "Nenhuma música tocando no momento para votar.", 0, requiredVotes, false);
 
             string trackUri = current.Identifiers.Uri;
@@ -271,7 +275,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 return (false, "Nenhuma playlist de lives configurada. Rode 'config' para escolher uma.");
 
             var current = CurrentTrackInfo;
-            if (current == null || string.IsNullOrEmpty(current.Identifiers?.Uri) || !current.Player.IsPlaying)
+            if (current == null || string.IsNullOrEmpty(current.Identifiers.Uri) || !current.Player.IsPlaying)
                 return (false, "Nenhuma música tocando no momento para adicionar à playlist.");
 
             try
@@ -326,7 +330,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                     .Where(uri => !string.IsNullOrEmpty(uri))
                     .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-                if (!string.IsNullOrEmpty(CurrentTrackInfo?.Identifiers?.Uri))
+                if (!string.IsNullOrEmpty(CurrentTrackInfo.Identifiers.Uri))
                 {
                     existingUris.Add(CurrentTrackInfo.Identifiers.Uri);
                 }
@@ -376,7 +380,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                     throw new Exception("Não foi possível obter o título do vídeo do YouTube.");
 
                 Log($"Título do vídeo: \"{videoTitle}\". Buscando no Spotify...");
-                trackUri = await SearchAndGetTrackUriAsync(videoTitle, cancellationToken);
+                trackUri = await SearchAndGetTrackUriAsync(videoTitle!, cancellationToken);
             }
             else
             {
@@ -441,7 +445,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                     return Task.FromResult((false, (SpotifyTrackInfo?)null, "Você não possui nenhuma música pendente na fila para remover."));
 
                 _userRequestedQueue.Remove(itemToRemove);
-                if (!string.IsNullOrEmpty(itemToRemove.Identifiers?.Uri))
+                if (!string.IsNullOrEmpty(itemToRemove.Identifiers.Uri))
                     _canceledTrackUris.TryAdd(itemToRemove.Identifiers.Uri, 0);
 
                 Log($"🗑️ A música '{itemToRemove.Media.Title}' pedida por @{itemToRemove.Request?.UserName} foi marcada para remoção/cancelamento.");
@@ -632,7 +636,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
             if (Uri.TryCreate(trimmed, UriKind.Absolute, out Uri? uri))
             {
-                var segments = uri.AbsolutePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+                var segments = uri.AbsolutePath.Split(['/'], StringSplitOptions.RemoveEmptyEntries);
                 int trackIndex = Array.IndexOf(segments, "track");
 
                 if (trackIndex >= 0 && trackIndex + 1 < segments.Length)
@@ -669,7 +673,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             if (durationMs <= 0)
                 return new string('░', totalBlocks) + " 00:00 / 00:00";
 
-            double percent = Math.Clamp((double)progressMs / durationMs, 0.0, 1.0);
+            double percent = Math.Max(0.0, Math.Min(1.0, (double)progressMs / durationMs));
             int filledBlocks = (int)Math.Round(percent * totalBlocks);
             int emptyBlocks = totalBlocks - filledBlocks;
 
@@ -688,7 +692,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         private void EnsureInitialized()
         {
-            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(SpotifyPlayerService));
 
             if (_spotifyClient == null)
                 throw new InvalidOperationException("O SpotifyClient não foi inicializado no SpotifyService. Utilize o SpotifyAuthService para autenticar e chame SetClient().");

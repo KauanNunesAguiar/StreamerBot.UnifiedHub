@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Text;
 using StreamerBot.UnifiedHub.Core.Models;
 
 namespace StreamerBot.UnifiedHub.Core.Services
@@ -22,6 +25,8 @@ namespace StreamerBot.UnifiedHub.Core.Services
                 return;
 
             string message = ChatMessageFormatter.Format(template, placeholders ?? []);
+            string finalMessage = string.IsNullOrWhiteSpace(_config.BotName) ? message : $"[{_config.BotName}] {message}";
+            StreamerBotContext.SendMessage(finalMessage);
             OnChatMessage?.Invoke(this, new ChatMessageEventArgs(_config.BotName, message));
         }
     }

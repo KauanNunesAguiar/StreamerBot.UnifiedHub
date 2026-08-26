@@ -1,4 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
 using System.Reflection;
+using System.Text;
 using System.Web;
 using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Core.Abstractions;
@@ -44,7 +48,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         public string BuildExchangeErrorMessage(Exception ex) =>
             $"Falha ao validar credenciais (Client Secret pode estar incorreto): {ex.Message}";
 
-        public async Task<string> RenderFormHtml(string clientId, string clientSecret, string? erro)
+        public Task<string> RenderFormHtml(string clientId, string clientSecret, string? erro)
         {
             var model = new OAuthLoginViewModel
             {
@@ -53,7 +57,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 Error = erro
             };
 
-            return await RazorTemplateRenderer.RenderAsync(LoginHtmlResourceName, model);
+            return Task.FromResult(SpotifyHtmlTemplates.RenderLogin(model));
         }
 
         public async Task<bool> ValidateCredentialsAsync(string clientId, string clientSecret, CancellationToken cancellationToken = default)
@@ -72,7 +76,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", authHeader);
 
                 var response = await HubServiceProvider.GetHttpClient("Spotify").SendAsync(request, cancellationToken);
+#if NET48
+                string responseBody = await response.Content.ReadAsStringAsync();
+#else
                 string responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
+#endif
 
                 return response.IsSuccessStatusCode && !responseBody.Contains("invalid_client");
             }
@@ -98,7 +106,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 VoteSkipThreshold = _spotifyConfig?.VoteSkipThreshold ?? 3,
                 QueueSize = _spotifyConfig?.QueueSize ?? 5,
                 BotName = _spotifyConfig?.BotName ?? "Spotify",
-                BotImageUrl = _spotifyConfig?.BotImageUrl ?? string.Empty,
                 PollingIntervalMs = _spotifyConfig?.PollingIntervalMs ?? 5000,
                 Messages = [.. SpotifyMessageCatalog.Definitions.Select(def =>
                 {
@@ -122,7 +129,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 })]
             };
 
-            return await RazorTemplateRenderer.RenderAsync(SettingsHtmlResourceName, model);
+            return SpotifyHtmlTemplates.RenderSettings(model);
         }
 
         public Task<string?> ProcessPostAuthStepAsync(OAuthResult result, string formBody, CancellationToken cancellationToken)
@@ -148,10 +155,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             string? botName = formData["botName"];
             if (!string.IsNullOrWhiteSpace(botName))
                 result.ExtraSettings["BotName"] = botName;
-
-            string? botImageUrl = formData["botImageUrl"];
-            if (botImageUrl != null)
-                result.ExtraSettings["BotImageUrl"] = botImageUrl.Trim();
 
             string? pollingIntervalMs = formData["pollingIntervalMs"];
             if (!string.IsNullOrWhiteSpace(pollingIntervalMs))
@@ -181,8 +184,9 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
             var playlists = new List<SpotifyPlaylistInfo>();
             var firstPage = await client.Playlists.CurrentUsers(new PlaylistCurrentUsersRequest { Limit = 50 }, cancellationToken);
+            var allPlaylists = await client.PaginateAll(firstPage, cancellationToken: cancellationToken);
 
-            await foreach (var playlist in client.Paginate(firstPage).WithCancellation(cancellationToken))
+            foreach (var playlist in allPlaylists)
             {
                 if (playlist?.Id == null) continue;
 
