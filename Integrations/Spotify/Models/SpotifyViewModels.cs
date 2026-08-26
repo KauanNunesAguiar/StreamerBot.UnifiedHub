@@ -12,7 +12,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
         public string SelectedPlaylistId { get; set; } = string.Empty;
         public int VoteSkipThreshold { get; set; } = 3;
         public int QueueSize { get; set; } = 5;
-        public string BotName { get; set; } = "Spotify";
+        public string BotLabel { get; set; } = "Spotify";
         public int PollingIntervalMs { get; set; } = 5000;
         public List<MessageInputViewModel> Messages { get; set; } = [];
     }

@@ -93,7 +93,7 @@ namespace StreamerBot.UnifiedHub.TestApp
 
                                 case "undo":
                                 case "removelast":
-                                    PrintHubResult(await SpotifyHub.RemoveLastAddedFromQueueAsync(userId, isModOrStreamer, cts.Token));
+                                    PrintHubResult(await SpotifyHub.RemoveLastAddedFromQueueAsync(userId, cts.Token));
                                     break;
 
                                 case "playlist":
@@ -151,7 +151,7 @@ namespace StreamerBot.UnifiedHub.TestApp
                                     break;
 
                                 case "voteskip":
-                                    var voteResult = await SpotifyHub.VoteSkipAsync(userId, cts.Token);
+                                    var voteResult = await SpotifyHub.VoteSkipAsync(userName, userId, cts.Token);
                                     if (voteResult.Success && !string.IsNullOrEmpty(voteResult.Data))
                                     {
                                         var voteData = JsonConvert.DeserializeObject<VoteSkipResult>(voteResult.Data);

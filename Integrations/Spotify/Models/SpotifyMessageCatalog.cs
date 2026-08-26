@@ -30,6 +30,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
             public const string VoteSkip = "voteskip";
             public const string JaVotou = "ja_votou";
             public const string SongHelp = "songhelp";
+            public const string Cooldown = "cooldown";
             public const string NoPermission = "sem_permissao";
         }
 
@@ -56,7 +57,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
             new MessageDefinition
             {
                 Key = Keys.Play,
-                Label = "Retomar Reprodução",
+                Label = "Retomar",
                 Description = "Mensagem exibida ao retomar a música.",
                 Placeholders = [ "{user}" ]
             },
@@ -70,7 +71,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
             new MessageDefinition
             {
                 Key = Keys.Pause,
-                Label = "Pausar Reprodução",
+                Label = "Pausar",
                 Description = "Mensagem exibida ao pausar a música.",
                 Placeholders = [ "{user}" ]
             },
@@ -84,14 +85,14 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
             new MessageDefinition
             {
                 Key = Keys.Volume,
-                Label = "Ajuste de Volume",
+                Label = "Volume",
                 Description = "Mensagem exibida ao alterar o volume.",
                 Placeholders = [ "{user}", "{volume}" ]
             },
             new MessageDefinition
             {
                 Key = Keys.AddToQueue,
-                Label = "Adicionar à Fila",
+                Label = "Add à Fila",
                 Description = "Mensagem ao adicionar uma música à fila.",
                 Placeholders = [ "{user}", "{musica}", "{artista}", "{posicao}", "{link_musica}" ]
             },
@@ -119,7 +120,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
             new MessageDefinition
             {
                 Key = Keys.CurrentTrack,
-                Label = "Informações da Música Atual",
+                Label = "Info Música Atual",
                 Description = "Mensagem ao consultar as informações da música atual.",
                 Placeholders = [ "{musica}", "{artista}", "{album}", "{progresso}", "{link_musica}" ]
             },
@@ -133,7 +134,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
             new MessageDefinition
             {
                 Key = Keys.Playlist,
-                Label = "Informações da Playlist da Live",
+                Label = "Info Playlist",
                 Description = "Mensagem ao consultar o link da playlist configurada para a live.",
                 Placeholders = [ "{playlist_link}" ]
             },
@@ -147,28 +148,28 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
             new MessageDefinition
             {
                 Key = Keys.AddToPlaylist,
-                Label = "Adicionar à Playlist",
+                Label = "Add à Playlist",
                 Description = "Mensagem ao salvar a música atual na playlist da live.",
                 Placeholders = [ "{user}", "{musica}", "{link_playlist}" ]
             },
             new MessageDefinition
             {
                 Key = Keys.ForceSkip,
-                Label = "Pular Forçado (Mod/Streamer)",
+                Label = "Pular Música",
                 Description = "Mensagem de pular música executado por moderadores/streamer.",
                 Placeholders = [ "{user}", "{musica}", "{artista}", "{link_musica}" ],
             },
             new MessageDefinition
             {
                 Key = Keys.Prev,
-                Label = "Voltar para Música Anterior",
+                Label = "Voltar Música",
                 Description = "Mensagem exibida ao voltar para a música anterior.",
                 Placeholders = [ "{user}", "{musica}", "{artista}", "{link_musica}" ]
             },
             new MessageDefinition
             {
                 Key = Keys.VoteSkip,
-                Label = "Voto para Pular",
+                Label = "Votar para Pular",
                 Description = "Mensagem ao registrar um voto para pular a música.",
                 Placeholders = [ "{user}", "{musica}", "{artista}", "{link_musica}", "{votos_atuais}", "{votos_necessarios}" ]
             },
@@ -181,6 +182,13 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
             },
             new MessageDefinition
             {
+                Key = Keys.Cooldown,
+                Label = "Comando em Cooldown",
+                Description = "Mensagem exibida quando o comando ainda está em cooldown (o próprio Streamer.bot decide quando disparar isso).",
+                Placeholders = [ "{user}" ]
+            },
+            new MessageDefinition
+            {
                 Key = Keys.NoPermission,
                 Label = "Sem Permissão",
                 Description = "Mensagem exibida quando alguém sem permissão tenta usar um comando. A checagem de quem pode usar cada comando é feita no Streamer.bot (permissões do trigger) - essa mensagem é só o texto de resposta.",
@@ -189,7 +197,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
             new MessageDefinition
             {
                 Key = Keys.SongHelp,
-                Label = "Ajuda / Lista de Comandos",
+                Label = "Ajuda / Comandos",
                 Description = "Mensagem de ajuda. Como os comandos (ex: !play, !pause) são configurados no Streamer.bot e não aqui, escreva livremente o texto listando os comandos que você criou.",
                 Placeholders = [ "{user}", "{lista_comandos}" ],
             }

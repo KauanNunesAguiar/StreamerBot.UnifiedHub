@@ -199,9 +199,9 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             return track;
         }
 
-        public async Task<(bool Success, SpotifyTrackInfo? RemovedItem, string Message)> RemoveLastAddedFromQueueAsync(string userId, bool isModOrStreamer = false, CancellationToken cancellationToken = default)
+        public async Task<(bool Success, SpotifyTrackInfo? RemovedItem, string Message)> RemoveLastAddedFromQueueAsync(string userId, CancellationToken cancellationToken = default)
         {
-            var result = await _playerService.RemoveLastAddedFromQueueAsync(userId, isModOrStreamer, cancellationToken);
+            var result = await _playerService.RemoveLastAddedFromQueueAsync(userId, cancellationToken);
 
             if (result.Success && result.RemovedItem != null)
             {
@@ -276,7 +276,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             _config.PlaylistId,
             _config.VoteSkipThreshold,
             _config.QueueSize,
-            _config.BotName,
+            _config.BotLabel,
             _config.PollingIntervalMs);
 
         #endregion
@@ -306,7 +306,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             await RaiseSkipChatMessageAsync(SpotifyMessageCatalog.Keys.Prev, user, cancellationToken);
         }
 
-        public async Task<VoteSkipResult> VoteSkipAsync(string userId, CancellationToken cancellationToken = default)
+        public async Task<VoteSkipResult> VoteSkipAsync(string user, string userId, CancellationToken cancellationToken = default)
         {
             var current = CurrentTrackInfo;
 
@@ -324,7 +324,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
             _dispatcher.Raise(key, new()
             {
-                ["user"] = userId,
+                ["user"] = user,
                 ["musica"] = current.Media.Title,
                 ["artista"] = current.Media.Artist,
                 ["link_musica"] = current.Identifiers.Url,
@@ -339,6 +339,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
         public void NotifyNoPermission(string user = "")
         {
             _dispatcher.Raise(SpotifyMessageCatalog.Keys.NoPermission, new() { ["user"] = user });
+        }
+
+        public void NotifyCooldown(string user = "")
+        {
+            _dispatcher.Raise(SpotifyMessageCatalog.Keys.Cooldown, new() { ["user"] = user });
         }
 
         public void ShowHelp(string user = "", string listaComandos = "")

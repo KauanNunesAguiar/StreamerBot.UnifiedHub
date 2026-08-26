@@ -105,7 +105,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 SelectedPlaylistId = _spotifyConfig?.PlaylistId ?? string.Empty,
                 VoteSkipThreshold = _spotifyConfig?.VoteSkipThreshold ?? 3,
                 QueueSize = _spotifyConfig?.QueueSize ?? 5,
-                BotName = _spotifyConfig?.BotName ?? "Spotify",
+                BotLabel = _spotifyConfig?.BotLabel ?? "Spotify",
                 PollingIntervalMs = _spotifyConfig?.PollingIntervalMs ?? 5000,
                 Messages = [.. SpotifyMessageCatalog.Definitions.Select(def =>
                 {
@@ -152,9 +152,9 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             if (!string.IsNullOrWhiteSpace(queueSize))
                 result.ExtraSettings["QueueSize"] = queueSize;
 
-            string? botName = formData["botName"];
-            if (!string.IsNullOrWhiteSpace(botName))
-                result.ExtraSettings["BotName"] = botName;
+            string? BotLabel = formData["BotLabel"];
+            if (!string.IsNullOrWhiteSpace(BotLabel))
+                result.ExtraSettings["BotLabel"] = BotLabel;
 
             string? pollingIntervalMs = formData["pollingIntervalMs"];
             if (!string.IsNullOrWhiteSpace(pollingIntervalMs))

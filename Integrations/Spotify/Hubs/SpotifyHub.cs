@@ -126,11 +126,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 $"Intervalo de monitoramento ajustado para {intervalMs}ms.",
                 "ajustar o intervalo de monitoramento");
 
-        public static HubResult SetBotName(string botName)
+        public static HubResult SetBotLabel(string BotLabel)
             => _executor.Execute(
-                () => _manager!.UpdateSettings(c => c.BotName = botName),
-                $"Nome do bot ajustado para '{botName}'.",
-                "ajustar o nome do bot");
+                () => _manager!.UpdateSettings(c => c.BotLabel = BotLabel),
+                $"Rótulo  do bot ajustado para '{BotLabel}'.",
+                "ajustar o rotulo do bot");
 
         public static HubResult SetMessageEnabled(string key, bool enabled)
             => _executor.Execute(
@@ -203,11 +203,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 },
                 "adicionar música à fila");
 
-        public static Task<HubResult> RemoveLastAddedFromQueueAsync(string userId, bool isModOrStreamer = false, CancellationToken cancellationToken = default)
+        public static Task<HubResult> RemoveLastAddedFromQueueAsync(string userId, CancellationToken cancellationToken = default)
             => _executor.ExecuteAsync(
                 async () =>
                 {
-                    var (success, removedItem, message) = await _manager!.RemoveLastAddedFromQueueAsync(userId, isModOrStreamer, cancellationToken);
+                    var (success, removedItem, message) = await _manager!.RemoveLastAddedFromQueueAsync(userId, cancellationToken);
                     return success ? HubResult.Ok(removedItem!, message) : HubResult.Fail(message);
                 },
                 "remover a última música da fila");
@@ -247,11 +247,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 "pular a música");
 
 
-        public static Task<HubResult> VoteSkipAsync(string userId, CancellationToken cancellationToken = default)
+        public static Task<HubResult> VoteSkipAsync(string user, string userId, CancellationToken cancellationToken = default)
             => _executor.ExecuteAsync(
                 async () =>
                 {
-                    var voteResult = await _manager!.VoteSkipAsync(userId, cancellationToken);
+                    var voteResult = await _manager!.VoteSkipAsync(user, userId, cancellationToken);
                     return voteResult.Accepted
                         ? HubResult.Ok(voteResult, voteResult.Message)
                         : HubResult.Fail(voteResult.Message);
@@ -263,6 +263,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Hubs
                 async () => { _manager!.NotifyNoPermission(user); await Task.CompletedTask; },
                 "Mensagem de sem permissão enviada.",
                 "notificar falta de permissão");
+
+        public static Task<HubResult> NotifyCooldownAsync(string user = "", CancellationToken cancellationToken = default)
+        => _executor.ExecuteAsync(
+            async () => { _manager!.NotifyCooldown(user); await Task.CompletedTask; },
+            "Mensagem de cooldown enviada.",
+            "notificar cooldown");
 
         public static Task<HubResult> ShowSongHelpAsync(string user = "", CancellationToken cancellationToken = default)
             => _executor.ExecuteAsync(

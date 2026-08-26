@@ -8,7 +8,7 @@ namespace StreamerBot.UnifiedHub.Core.Services
     /// <summary>
     /// Centraliza a lógica de "montar e disparar mensagem de chat" comum a qualquer
     /// integração: checa se está habilitada, busca o template, formata placeholders
-    /// e dispara o evento com o BotName correto.
+    /// e dispara o evento com o BotLabel correto.
     /// </summary>
     public class ChatMessageDispatcher(ChatIntegrationConfig config)
     {
@@ -25,9 +25,9 @@ namespace StreamerBot.UnifiedHub.Core.Services
                 return;
 
             string message = ChatMessageFormatter.Format(template, placeholders ?? []);
-            string finalMessage = string.IsNullOrWhiteSpace(_config.BotName) ? message : $"[{_config.BotName}] {message}";
+            string finalMessage = string.IsNullOrWhiteSpace(_config.BotLabel) ? message : $"[{_config.BotLabel}] {message}";
             StreamerBotContext.SendMessage(finalMessage);
-            OnChatMessage?.Invoke(this, new ChatMessageEventArgs(_config.BotName, message));
+            OnChatMessage?.Invoke(this, new ChatMessageEventArgs(_config.BotLabel, message));
         }
     }
 }

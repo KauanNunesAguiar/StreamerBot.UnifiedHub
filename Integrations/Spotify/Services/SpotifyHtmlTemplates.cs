@@ -126,8 +126,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             sb.Append("<span class=\"field-hint\">Frequência com que o bot verifica a música tocando. Padrão: 5000ms.</span></div>");
 
             sb.Append("<div class=\"section-title\">Identidade do Bot</div>");
-            sb.Append("<div class=\"form-group\"><label for=\"botName\">Nome do Bot no Chat</label>");
-            sb.Append("<input type=\"text\" id=\"botName\" name=\"botName\" value=\"").Append(E(model.BotName)).Append("\"></div>");
+            sb.Append("<div class=\"form-group\"><label for=\"BotLabel\">Nome do Bot no Chat</label>");
+            sb.Append("<input type=\"text\" id=\"BotLabel\" name=\"BotLabel\" value=\"").Append(E(model.BotLabel)).Append("\"></div>");
 
             sb.Append("<div class=\"section-title\">Mensagens do Chat</div><div class=\"messages-container\">");
             foreach (var msg in model.Messages)

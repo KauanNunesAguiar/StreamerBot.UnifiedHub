@@ -8,6 +8,6 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
         string PlaylistId,
         int VoteSkipThreshold,
         int QueueSize,
-        string BotName,
+        string BotLabel,
         int PollingIntervalMs);
 }

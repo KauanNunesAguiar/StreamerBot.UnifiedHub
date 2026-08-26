@@ -14,7 +14,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Models
 
         public SpotifyConfig()
         {
-            BotName = "Spotify";
+            BotLabel = "Spotify";
         }
 
         public override string ToString()

@@ -6,7 +6,7 @@ using StreamerBot.UnifiedHub.Core.Models;
 namespace StreamerBot.UnifiedHub.Core.Services
 {
     /// <summary>
-    /// Aplica os campos comuns de ChatIntegrationConfig (BotName,
+    /// Aplica os campos comuns de ChatIntegrationConfig (BotLabel,
     /// PollingIntervalMs, Messages, MessageEnabled) a partir do dicionário de
     /// ExtraSettings retornado pelo fluxo de OAuth. Reutilizável por qualquer
     /// integração que tenha uma etapa pós-auth de configuração de chat.
@@ -15,8 +15,8 @@ namespace StreamerBot.UnifiedHub.Core.Services
     {
         public static void ApplyExtraSettings(ChatIntegrationConfig config, IReadOnlyDictionary<string, string> extra)
         {
-            if (extra.TryGetValue("BotName", out string? botName) && !string.IsNullOrWhiteSpace(botName))
-                config.BotName = botName;
+            if (extra.TryGetValue("BotLabel", out string? BotLabel) && !string.IsNullOrWhiteSpace(BotLabel))
+                config.BotLabel = BotLabel;
 
             if (extra.TryGetValue("PollingIntervalMs", out string? rawPolling) && int.TryParse(rawPolling, out int pollingMs) && pollingMs >= 1000)
                 config.PollingIntervalMs = pollingMs;

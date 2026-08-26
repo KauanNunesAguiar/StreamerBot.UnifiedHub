@@ -236,7 +236,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             if (!voters.TryAdd(userId, 0))
             {
                 return new VoteSkipResult(
-                    false,
+                    true,
                     $"Você já votou para pular '{trackTitle}'. ({voters.Count}/{requiredVotes} votos)",
                     voters.Count, requiredVotes, false, AlreadyVoted: true);
             }
@@ -433,13 +433,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
 
         public Task<(bool Success, SpotifyTrackInfo? RemovedItem, string Message)> RemoveLastAddedFromQueueAsync(
             string userId,
-            bool isModOrStreamer = false,
             CancellationToken cancellationToken = default)
         {
             lock (_userRequestedQueue)
             {
                 var itemToRemove = _userRequestedQueue
-                    .LastOrDefault(item => isModOrStreamer || item.Request?.UserId == userId);
+                    .LastOrDefault(item => item.Request?.UserId == userId);
 
                 if (itemToRemove == null)
                     return Task.FromResult((false, (SpotifyTrackInfo?)null, "Você não possui nenhuma música pendente na fila para remover."));

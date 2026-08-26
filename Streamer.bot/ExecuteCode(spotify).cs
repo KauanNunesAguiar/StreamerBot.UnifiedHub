@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using Streamer.bot.Plugin.Interface.Model;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Models;
 using StreamerBot.UnifiedHub.Core.Services;
@@ -14,6 +16,8 @@ public class CPHInline
 		public string? GetGlobalVar(string name, bool persisted = true) => _outer.CPH.GetGlobalVar<string>(name, persisted);
 		public void SetGlobalVar(string name, object value, bool persisted = true) => _outer.CPH.SetGlobalVar(name, value, persisted);
 	}
+
+	private const string SpotifyCommandGroup = "Spotify - Kafei";
 
 	private string GetUser()
 	{
@@ -36,7 +40,9 @@ public class CPHInline
 	public bool InitSpotify()
 	{
 		StreamerBotContext.Connect(new SbBridge(this));
-		SpotifyHub.SetCommandProvider(() => new List<HubCommandInfo> { new("play", new[] { "!play" }, true), new("pause", new[] { "!pause" }, true), new("prev", new[] { "!prev" }, true), new("vol", new[] { "!vol" }, true), new("add", new[] { "!sr" }, true), new("undo", new[] { "!undo" }, true), new("atual", new[] { "!atual" }, true), new("fila", new[] { "!fila" }, true), new("skip", new[] { "!skip" }, true), new("voteskip", new[] { "!voteskip" }, true), });
+		SpotifyHub.SetCommandProvider(() => CPH.GetCommands()
+			.Where(c => c.Group == SpotifyCommandGroup)
+			.Select(c => new HubCommandInfo(c.Name, c.Commands ?? new List<string>(), c.Enabled)));
 		return Report(SpotifyHub.InitializeAsync(pollingIntervalMs: 1000).GetAwaiter().GetResult());
 	}
 
@@ -54,7 +60,12 @@ public class CPHInline
 	public bool Previous() => Report(SpotifyHub.PreviousAsync(GetUser()).GetAwaiter().GetResult());
 	public bool Volume()
 	{
-		CPH.TryGetArg("input0", out int volume);
+		CPH.TryGetArg("rawInput", out string rawVolume);
+		if (!int.TryParse(rawVolume, out int volume))
+		{
+			CPH.SendMessage("Informe um número válido para o volume. Ex: !vol 50");
+			return false;
+		}
 		return Report(SpotifyHub.SetVolumeAsync(volume, GetUser()).GetAwaiter().GetResult());
 	}
 
@@ -62,7 +73,7 @@ public class CPHInline
 	// ---------- Fila ----------
 	public bool AddToQueue()
 	{
-		CPH.TryGetArg("input0", out string musica);
+		CPH.TryGetArg("rawInput", out string musica);
 		CPH.TryGetArg("userId", out string userId);
 		return Report(SpotifyHub.AddToQueueAsync(musica ?? "", userId ?? "", GetUser()).GetAwaiter().GetResult());
 	}
@@ -70,8 +81,7 @@ public class CPHInline
 	public bool Undo()
 	{
 		CPH.TryGetArg("userId", out string userId);
-		CPH.TryGetArg("isModerator", out bool isMod);
-		return Report(SpotifyHub.RemoveLastAddedFromQueueAsync(userId ?? "", isMod).GetAwaiter().GetResult());
+		return Report(SpotifyHub.RemoveLastAddedFromQueueAsync(userId ?? "").GetAwaiter().GetResult());
 	}
 
 	public bool Queue() => Report(SpotifyHub.GetQueueAsync().GetAwaiter().GetResult());
@@ -82,10 +92,11 @@ public class CPHInline
 	public bool VoteSkip()
 	{
 		CPH.TryGetArg("userId", out string userId);
-		return Report(SpotifyHub.VoteSkipAsync(userId ?? "").GetAwaiter().GetResult());
+		return Report(SpotifyHub.VoteSkipAsync(GetUser(), userId ?? "").GetAwaiter().GetResult());
 	}
 
 	public bool SongHelp() => Report(SpotifyHub.ShowSongHelpAsync(GetUser()).GetAwaiter().GetResult());
+	public bool Cooldown() => Report(SpotifyHub.NotifyCooldownAsync(GetUser()).GetAwaiter().GetResult());
 	public bool NoPermission() => Report(SpotifyHub.NotifyNoPermissionAsync(GetUser()).GetAwaiter().GetResult());
 	// ---------- Configurações Rápidas ----------
 	public bool ConfigVoteSkip()
@@ -106,10 +117,10 @@ public class CPHInline
 		return Report(SpotifyHub.SetPollingIntervalMs(intervalMs));
 	}
 
-	public bool ConfigBotName()
+	public bool ConfigBotLabel()
 	{
-		CPH.TryGetArg("input0", out string botName);
-		return Report(SpotifyHub.SetBotName(botName ?? ""));
+		CPH.TryGetArg("input0", out string BotLabel);
+		return Report(SpotifyHub.SetBotLabel(BotLabel ?? ""));
 	}
 
 	public bool ConfigMessageToggle()
