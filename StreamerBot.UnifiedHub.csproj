@@ -13,6 +13,7 @@
     </None>
     <EmbeddedResource Include="Core\Assets\SharedStyles.css" />
     <EmbeddedResource Include="Core\Assets\ChatSettingsStyles.css" />
+    <EmbeddedResource Include="Integrations\Overlay\Assets\chat-overlay.html" />
     <EmbeddedResource Include="Integrations\Spotify\Assets\spotify-login.html" />
     <EmbeddedResource Include="Integrations\Spotify\Assets\spotify-settings.html" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
@@ -25,9 +26,11 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="SpotifyAPI.Web" Version="7.4.2" />
     <Compile Remove="Program.Example.cs" />
-    <Compile Remove="Streamer.bot\ExecuteCode(spotify).cs" />
     <None Include="Program.Example.cs" />
+    <Compile Remove="Streamer.bot\ExecuteCode(spotify).cs" />
     <None Include="Streamer.bot\ExecuteCode(spotify).cs" />
+    <Compile Remove="Streamer.bot\ExecuteCode(overlay).cs" />
+    <None Include="Streamer.bot\ExecuteCode(overlay).cs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net48'">

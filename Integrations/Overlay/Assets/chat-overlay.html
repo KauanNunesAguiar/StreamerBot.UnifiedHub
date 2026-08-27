@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Chat Overlay - StreamerBot Unified Hub</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+
+        #chat {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            gap: 6px;
+            padding: 16px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        .msg {
+            display: flex;
+            align-items: baseline;
+            gap: 6px;
+            background: rgba(18, 18, 18, 0.55);
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 18px;
+            color: #FFFFFF;
+            max-width: fit-content;
+            animation: slide-in 0.25s ease-out;
+        }
+
+        body.mode-permanent .msg {
+            background: rgba(18, 18, 18, 0.75);
+        }
+
+        .msg .platform-icon {
+            display: flex;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .msg .badge {
+            font-weight: 700;
+            color: #fff;
+            padding: 0 5px;
+            border-radius: 3px;
+            flex-shrink: 0;
+        }
+
+        .msg .emote {
+            vertical-align: middle;
+            margin: 0 2px;
+        }
+
+        .msg .user {
+            font-weight: 700;
+        }
+
+        .msg.fading {
+            animation: fade-out 0.6s ease-in forwards;
+        }
+
+        @keyframes slide-in {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fade-out {
+            from {
+                opacity: 1;
+            }
+
+            to {
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="mode-fadeout">
+    <div id="chat"></div>
+
+    <script>
+        const PLATFORM_ICONS = {
+            twitch: '<svg viewBox="0 0 24 24" width="16" height="16" fill="#9146FF"><path d="M4 2 2 6v14h6v2h4l3-3h5l4-4V2H4zm18 12-3 3h-5l-3 3v-3H6V4h16v10z"/><path d="M15 7h2v5h-2zM10 7h2v5h-2z"/></svg>',
+            youtube: '<svg viewBox="0 0 24 24" width="16" height="16" fill="#FF0000"><path d="M23 7.2s-.2-1.6-.9-2.3c-.9-.9-1.9-.9-2.3-1C16.9 3.6 12 3.6 12 3.6h0s-4.9 0-7.8.3c-.4 0-1.4.1-2.3 1C1.2 5.6 1 7.2 1 7.2S.8 9.1.8 11v1.9c0 1.9.2 3.8.2 3.8s.2 1.6.9 2.3c.9.9 2.1.9 2.6 1 1.9.2 8.1.3 8.1.3s4.9 0 7.8-.3c.4 0 1.4-.1 2.3-1 .7-.7.9-2.3.9-2.3s.2-1.9.2-3.8V11c0-1.9-.2-3.8-.2-3.8zM9.7 14.7V8.4l6 3.1-6 3.2z"/></svg>'
+        };
+
+        const chatEl = document.getElementById('chat');
+
+        let currentMode = 'fadeout';
+        let currentMaxMessages = 50;
+        let currentFadeTimeMs = 12000;
+        let currentEmoteSize = 28;
+        let currentBadgeSize = 18;
+        let currentShowBadges = true;
+
+        function connect() {
+            const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+            const ws = new WebSocket(`${proto}://${location.host}{{WS_ENDPOINT}}`);
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'state') applyState(data);
+                else if (data.type === 'chat') addMessage(data);
+            };
+
+            ws.onclose = () => setTimeout(connect, 2000);
+        }
+
+        function applyState(state) {
+            currentMode = state.mode;
+            currentMaxMessages = state.maxMessages;
+            currentFadeTimeMs = state.fadeTimeMs;
+            currentEmoteSize = state.emoteSize;
+            currentBadgeSize = state.badgeSize;
+            currentShowBadges = state.showBadges;
+            document.body.classList.toggle('mode-permanent', currentMode === 'permanent');
+            document.body.classList.toggle('mode-fadeout', currentMode === 'fadeout');
+            trimMessages();
+        }
+
+        function addMessage(data) {
+            const el = document.createElement('div');
+            el.className = 'msg';
+            el.innerHTML = `
+                <span class="platform-icon">${PLATFORM_ICONS[data.platform] || ''}</span>
+                ${renderBadges(data)}
+                <span class="user" style="color:${data.color || '#1DB954'}">${escapeHtml(data.user)}:</span>
+                <span class="text">${renderMessageWithEmotes(data.message, data.emotes)}</span>
+            `;
+            chatEl.appendChild(el);
+            trimMessages();
+
+            if (currentMode === 'fadeout') {
+                setTimeout(() => {
+                    el.classList.add('fading');
+                    setTimeout(() => el.remove(), 600);
+                }, currentFadeTimeMs);
+            }
+
+            chatEl.scrollTop = chatEl.scrollHeight;
+        }
+
+        function trimMessages() {
+            while (chatEl.children.length > currentMaxMessages) {
+                chatEl.removeChild(chatEl.firstChild);
+            }
+        }
+
+        function renderBadges(data) {
+            if (!currentShowBadges) return '';
+            let html = '';
+            if (data.isBroadcaster) html += badge('BR', '#E91429');
+            else if (data.isModerator) html += badge('MOD', '#00AD03');
+            if (data.isVip) html += badge('VIP', '#E005B9');
+            if (data.isSubscriber) html += badge('SUB', '#9146FF');
+            return html;
+        }
+
+        function badge(label, color) {
+            const fontSize = Math.max(8, Math.round(currentBadgeSize * 0.55));
+            return `<span class="badge" style="background:${color};height:${currentBadgeSize}px;line-height:${currentBadgeSize}px;font-size:${fontSize}px">${label}</span>`;
+        }
+
+        // Espera o formato padrão de tag IRC da Twitch: "id:start-end,start-end/id2:start-end"
+        function renderMessageWithEmotes(text, emotesRaw) {
+            if (!text) return '';
+            if (!emotesRaw) return escapeHtml(text);
+
+            const ranges = [];
+            emotesRaw.split('/').forEach(part => {
+                const [id, range] = part.split(':');
+                if (!id || !range) return;
+                const [start, end] = range.split('-').map(Number);
+                if (!isNaN(start) && !isNaN(end)) ranges.push({
+                    id,
+                    start,
+                    end
+                });
+            });
+
+            if (ranges.length === 0) return escapeHtml(text);
+            ranges.sort((a, b) => a.start - b.start);
+
+            let result = '';
+            let cursor = 0;
+            for (const r of ranges) {
+                if (r.start < cursor) continue;
+                result += escapeHtml(text.slice(cursor, r.start));
+                const url = `https://static-cdn.jtvnw.net/emoticons/v2/${r.id}/default/dark/3.0`;
+                result += `<img class="emote" src="${url}" style="height:${currentEmoteSize}px" alt="">`;
+                cursor = r.end; // EndIndex já é exclusivo — não soma +1
+            }
+            result += escapeHtml(text.slice(cursor));
+            return result;
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str || '';
+            return div.innerHTML;
+        }
+
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            if (!data || !data.type) return;
+            if (data.type === 'previewConfig') applyState(data.state);
+            else if (data.type === 'previewChat') addMessage(data.message);
+        });
+
+        connect();
+    </script>
+</body>
+
+</html>
