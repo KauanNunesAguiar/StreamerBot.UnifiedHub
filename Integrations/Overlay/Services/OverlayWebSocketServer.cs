@@ -15,6 +15,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services
         private ChatSocketModule? _socketModule;
         private ChatOverlayConfig _config = new();
         private Func<ChatOverlayConfig, Task>? _onSettingsSaved;
+        public string CustomCss { get; set; } = string.Empty;
 
         public void Start(ChatOverlayConfig config, Func<ChatOverlayConfig, Task>? onSettingsSaved = null)
         {
@@ -60,6 +61,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services
                     _config.BadgeSize = badgeSize;
                     _config.ShowBadges = !string.IsNullOrEmpty(form["showBadges"]);
                     _config.Mode = form["mode"] == "permanent" ? ChatOverlayMode.Permanent : ChatOverlayMode.FadeOut;
+                    _config.CustomCss = form["customCss"] ?? string.Empty;
 
                     if (_onSettingsSaved != null)
                         await _onSettingsSaved(_config);
@@ -109,7 +111,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services
             fadeTimeMs = _config.FadeTimeMs,
             emoteSize = _config.EmoteSize,
             badgeSize = _config.BadgeSize,
-            showBadges = _config.ShowBadges
+            showBadges = _config.ShowBadges,
+            customCss = _config.CustomCss
         };
     }
 }

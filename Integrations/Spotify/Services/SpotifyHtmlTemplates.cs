@@ -34,13 +34,15 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 .form-group input:focus { background-color: #333333; }
                 .footer-note { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center; font-size: 12px; color: var(--text-sub); line-height: 1.4; }
             ");
-            sb.Append("</style></head><body><div class=\"container\">");
+            sb.Append("</style></head><body><div class=\"container wide\">");
             sb.Append("<div class=\"header\"><div class=\"logo-icon\">🎵</div><h1>Configurações do Spotify</h1><p>Integração StreamerBot Unified Hub</p></div>");
 
             if (!string.IsNullOrEmpty(model.Error))
                 sb.Append("<div class=\"error\">").Append(E(model.Error)).Append("</div>");
 
             sb.Append("<form method=\"POST\">");
+            sb.Append("<div class=\"settings-grid\">");
+            sb.Append("<div class=\"col\">");
             sb.Append("<div class=\"form-group\"><label for=\"clientId\">Client ID</label>");
             sb.Append("<input type=\"text\" id=\"clientId\" name=\"clientId\" value=\"").Append(E(model.ClientId)).Append("\" placeholder=\"Insira o Client ID\" required autocomplete=\"off\"></div>");
             sb.Append("<div class=\"form-group\"><label for=\"clientSecret\">Client Secret</label>");
@@ -82,11 +84,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 .playlist-info { display: flex; flex-direction: column; min-width: 0; }
                 .playlist-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
                 .playlist-tracks { font-size: 12px; color: var(--text-sub); }
-                .messages-container { max-height: 250px; overflow-y: auto; padding-right: 6px; margin-bottom: 15px; }
-                .message-group { margin-bottom: 16px; }
+                .messages-container { flex: 1; min-height: 0; overflow-y: auto; padding-right: 6px; margin-bottom: 15px; }
+                .message-group { margin-bottom: 12px; background-color: var(--item-bg); border-radius: 8px; padding: 12px; }
                 .message-group textarea { resize: vertical; }
             ");
-            sb.Append("</style></head><body><div class=\"container\">");
+            sb.Append("</style></head><body><div class=\"container wide\">");
             sb.Append("<div class=\"step-indicator\">Passo 2 de 2</div>");
             sb.Append("<div class=\"header\"><div class=\"logo-icon\">🎵</div><h1>Configurações do Spotify</h1><p>Escolha a playlist das lives e personalize as respostas no chat</p></div>");
 
@@ -94,6 +96,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                 sb.Append("<div class=\"error\">").Append(E(model.Error)).Append("</div>");
 
             sb.Append("<form method=\"POST\">");
+            sb.Append("<div class=\"settings-grid\">");
+            sb.Append("<div class=\"col\">");
             sb.Append("<div class=\"section-title\">Playlist de Lives</div><div class=\"playlist-list\">");
 
             if (model.Playlists.Count == 0)
@@ -129,6 +133,9 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
             sb.Append("<div class=\"form-group\"><label for=\"BotLabel\">Nome do Bot no Chat</label>");
             sb.Append("<input type=\"text\" id=\"BotLabel\" name=\"BotLabel\" value=\"").Append(E(model.BotLabel)).Append("\"></div>");
 
+            sb.Append("</div>");
+            sb.Append("<div class=\"col\">");
+
             sb.Append("<div class=\"section-title\">Mensagens do Chat</div><div class=\"messages-container\">");
             foreach (var msg in model.Messages)
             {
@@ -144,6 +151,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Spotify.Services
                     sb.Append("<code>").Append(E(placeholder)).Append("</code> ");
                 sb.Append("</div></div>");
             }
+            sb.Append("</div>"); // fecha .col direita
+            sb.Append("</div>"); // fecha .settings-grid
             sb.Append("</div>");
 
             sb.Append("<button type=\"submit\" class=\"btn-submit\">Salvar e Concluir</button></form>");

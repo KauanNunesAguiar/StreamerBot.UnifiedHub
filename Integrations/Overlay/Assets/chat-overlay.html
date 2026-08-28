@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 
+<style id="customCssStyle"></style>
+
 <head>
     <meta charset="UTF-8">
     <title>Chat Overlay - StreamerBot Unified Hub</title>
@@ -132,6 +134,7 @@
             currentShowBadges = state.showBadges;
             document.body.classList.toggle('mode-permanent', currentMode === 'permanent');
             document.body.classList.toggle('mode-fadeout', currentMode === 'fadeout');
+            document.getElementById('customCssStyle').textContent = state.customCss || '';
             trimMessages();
         }
 

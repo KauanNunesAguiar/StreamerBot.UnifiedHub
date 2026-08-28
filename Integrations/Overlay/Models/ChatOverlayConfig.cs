@@ -12,6 +12,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Models
         public int BadgeSize { get; set; } = 18;
         public bool ShowBadges { get; set; } = true;
         public ChatOverlayMode Mode { get; set; } = ChatOverlayMode.FadeOut;
+        public string CustomCss { get; set; } = string.Empty;
 
         public override string ToString() => JsonConvert.SerializeObject(this, Formatting.Indented);
     }

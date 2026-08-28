@@ -33,12 +33,12 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services
                 .success { background-color: rgba(29, 185, 84, 0.15); border: 1px solid var(--primary); color: var(--primary-hover); padding: 12px 16px; border-radius: 8px; font-size: 13px; margin-bottom: 20px; }
                 .field-row { display: flex; gap: 12px; }
                 .field-row .form-group { flex: 1; }
-                .preview-wrapper { position: relative; height: 220px; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background-image: linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; background-color: #1a1a1a; }
+                .preview-wrapper { position: relative; flex: 1; min-height: 260px; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background-image: linear-gradient(45deg, #2a2a2a 25%, transparent 25%), linear-gradient(-45deg, #2a2a2a 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #2a2a2a 75%), linear-gradient(-45deg, transparent 75%, #2a2a2a 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px; background-color: #1a1a1a; }
                 .preview-frame { width: 100%; height: 100%; border: none; }
                 .btn-secondary { width: 100%; background-color: var(--item-bg); color: var(--text-main); border: 1px solid var(--border); padding: 12px; border-radius: 50px; font-size: 13px; font-weight: 700; cursor: pointer; margin-top: 8px; }
                 .btn-secondary:hover { background-color: var(--item-bg-hover); }
             ");
-            sb.Append("</style></head><body><div class=\"container\">");
+            sb.Append("</style></head><body><div class=\"container wide\">");
             sb.Append("<div class=\"header\"><div class=\"logo-icon\">💬</div><h1>Configurações do Overlay de Chat</h1><p>Ajuste conexão, comportamento e visual do overlay</p></div>");
 
             if (!string.IsNullOrEmpty(model.Error))
@@ -46,10 +46,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services
             else if (model.Saved)
                 sb.Append("<div class=\"success\">Configurações salvas com sucesso!</div>");
 
-            sb.Append("<div class=\"section-title\">Preview ao Vivo</div>");
-            sb.Append("<div class=\"preview-wrapper\"><iframe id=\"previewFrame\" class=\"preview-frame\" src=\"/\"></iframe></div>");
-            sb.Append("<button type=\"button\" id=\"sendTestMsgBtn\" class=\"btn-secondary\">Enviar Mensagem de Teste</button>");
-
+            sb.Append("<div class=\"settings-grid\">");
+            sb.Append("<div class=\"col\">");
             sb.Append("<form method=\"POST\">");
 
             sb.Append("<div class=\"section-title\">Conexão</div>");
@@ -89,13 +87,28 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services
             sb.Append("<input type=\"checkbox\" name=\"showBadges\"").Append(config.ShowBadges ? " checked" : "").Append(">");
             sb.Append("<span class=\"toggle-track\"></span><span class=\"toggle-label\">").Append(config.ShowBadges ? "Habilitado" : "Desabilitado").Append("</span></label></div>");
 
+            sb.Append("<div class=\"section-title\">CSS Customizado</div>");
+            sb.Append("<div class=\"form-group\"><label for=\"customCss\">CSS Adicional (avançado)</label>");
+            sb.Append("<textarea id=\"customCss\" name=\"customCss\" rows=\"6\" placeholder=\".msg { ... }\">").Append(E(config.CustomCss)).Append("</textarea>");
+            sb.Append("<span class=\"field-hint\">Aplicado direto no overlay em tempo real. CSS inválido pode quebrar o layout.</span></div>");
+            sb.Append("</div>"); // fecha .col esquerda
+
+            sb.Append("<div class=\"col col-sticky\">");
+            sb.Append("<div class=\"section-title\">Preview ao Vivo</div>");
+            sb.Append("<div class=\"preview-wrapper\"><iframe id=\"previewFrame\" class=\"preview-frame\" src=\"/\"></iframe></div>");
+            sb.Append("<button type=\"button\" id=\"sendTestMsgBtn\" class=\"btn-secondary\">Enviar Mensagem de Teste</button>");
+            sb.Append("</div>"); // fecha .col direita
+
+            sb.Append("</div>"); // fecha .settings-grid
+
             sb.Append("<button type=\"submit\" class=\"btn-submit\">Salvar Configurações</button>");
             sb.Append("</form>");
+
             sb.Append(@"<script>
                 (function() {
                     var frame = document.getElementById('previewFrame');
                     var testBtn = document.getElementById('sendTestMsgBtn');
-                    var fieldIds = ['maxMessages', 'fadeTimeMs', 'emoteSize', 'badgeSize'];
+                    var fieldIds = ['maxMessages', 'fadeTimeMs', 'emoteSize', 'badgeSize', 'customCss'];
 
                     function currentState() {
                         var modeInput = document.querySelector('input[name=""mode""]:checked');
@@ -108,6 +121,7 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services
                                 emoteSize: parseInt(document.getElementById('emoteSize').value, 10) || 28,
                                 badgeSize: parseInt(document.getElementById('badgeSize').value, 10) || 18,
                                 showBadges: document.querySelector('input[name=""showBadges""]').checked
+                                customCss: document.getElementById('customCss').value
                             }
                         };
                     }
