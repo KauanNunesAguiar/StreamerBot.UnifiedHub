@@ -10,3 +10,6 @@ obj/
 .vscode/
 .vs/
 *.user
+
+
+FodyWeavers.xsd
