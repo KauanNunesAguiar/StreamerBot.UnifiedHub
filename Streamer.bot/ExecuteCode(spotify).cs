@@ -3,7 +3,7 @@ using System.Linq;
 using Streamer.bot.Plugin.Interface.Model;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Models;
-using StreamerBot.UnifiedHub.Core.Services;
+using StreamerBot.UnifiedHub.Core.Services.Bridge;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Hubs;
 
 public class CPHInline

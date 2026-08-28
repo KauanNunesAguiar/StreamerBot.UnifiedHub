@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using SpotifyAPI.Web;
+using StreamerBot.UnifiedHub.Core.Compatibility;
 using StreamerBot.UnifiedHub.Core.Services.Http;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 
