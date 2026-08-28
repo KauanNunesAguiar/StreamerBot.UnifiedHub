@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Models;
-using StreamerBot.UnifiedHub.Core.Services;
+using StreamerBot.UnifiedHub.Core.Services.Chat;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Extensions;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 

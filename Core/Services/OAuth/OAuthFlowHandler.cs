@@ -6,7 +6,7 @@ using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Compatibility;
 using StreamerBot.UnifiedHub.Core.Models;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.OAuth
 {
     public class OAuthFlowHandler(
         ILocalHttpServer httpServer,

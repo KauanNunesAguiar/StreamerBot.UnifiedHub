@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.Html
 {
     public static class EmbeddedResourceReader
     {

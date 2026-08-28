@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using StreamerBot.UnifiedHub.Core.Models;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.Execution
 {
     /// <summary>
     /// Encapsula o padrão repetido em todo Hub estático: checar se está pronto,

@@ -5,7 +5,7 @@ using Newtonsoft.Json;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Models;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.Config
 {
     public class ConfigManager : IConfigManager
     {

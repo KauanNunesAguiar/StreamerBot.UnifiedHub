@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using StreamerBot.UnifiedHub.Core.Models;
+using StreamerBot.UnifiedHub.Core.Services.Bridge;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.Chat
 {
     /// <summary>
     /// Centraliza a lógica de "montar e disparar mensagem de chat" comum a qualquer

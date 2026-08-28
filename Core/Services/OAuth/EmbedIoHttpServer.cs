@@ -6,7 +6,7 @@ using EmbedIO;
 using EmbedIO.Actions;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.OAuth
 {
     /// <summary>
     /// Implementação de ILocalHttpServer usando EmbedIO. Faz a ponte entre o modelo

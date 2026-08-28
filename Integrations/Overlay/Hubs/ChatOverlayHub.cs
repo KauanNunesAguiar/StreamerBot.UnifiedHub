@@ -1,7 +1,9 @@
 using System;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Models;
-using StreamerBot.UnifiedHub.Core.Services;
+using StreamerBot.UnifiedHub.Core.Services.Config;
+using StreamerBot.UnifiedHub.Core.Services.Execution;
+using StreamerBot.UnifiedHub.Core.Services.OAuth;
 using StreamerBot.UnifiedHub.Integrations.Overlay.Extensions;
 using StreamerBot.UnifiedHub.Integrations.Overlay.Models;
 using StreamerBot.UnifiedHub.Integrations.Overlay.Services;

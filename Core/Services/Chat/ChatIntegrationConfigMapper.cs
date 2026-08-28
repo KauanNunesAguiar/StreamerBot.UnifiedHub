@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using StreamerBot.UnifiedHub.Core.Models;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.Chat
 {
     /// <summary>
     /// Aplica os campos comuns de ChatIntegrationConfig (BotLabel,

@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Text;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.Http
 {
     /// <summary>
     /// Consulta o endpoint público oEmbed do YouTube para resolver o título de um vídeo

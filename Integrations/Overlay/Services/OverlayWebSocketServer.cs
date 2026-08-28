@@ -2,7 +2,7 @@ using System.Text;
 using System.Web;
 using EmbedIO;
 using EmbedIO.Actions;
-using StreamerBot.UnifiedHub.Core.Services;
+using StreamerBot.UnifiedHub.Core.Services.Html;
 using StreamerBot.UnifiedHub.Integrations.Overlay.Models;
 
 namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services

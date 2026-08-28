@@ -4,7 +4,7 @@ using System.Text;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Models;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.OAuth
 {
     /// <summary>
     /// Wrapper fino reutilizável que monta o OAuthFlowHandler e delega a execução.

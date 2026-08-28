@@ -4,7 +4,7 @@ using System.Net.Http;
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.Http
 {
     /// <summary>
     /// Container mínimo, isolado do resto da aplicação. Não é injetado em cascata -

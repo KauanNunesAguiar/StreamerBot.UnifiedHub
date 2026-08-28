@@ -4,7 +4,7 @@ using System.Text;
 using Newtonsoft.Json;
 using SpotifyAPI.Web;
 using StreamerBot.UnifiedHub.Core.Abstractions;
-using StreamerBot.UnifiedHub.Core.Services;
+using StreamerBot.UnifiedHub.Core.Services.Chat;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Extensions;
 using StreamerBot.UnifiedHub.Integrations.Spotify.Models;
 

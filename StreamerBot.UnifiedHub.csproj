@@ -14,11 +14,8 @@
     <EmbeddedResource Include="Core\Assets\SharedStyles.css" />
     <EmbeddedResource Include="Core\Assets\ChatSettingsStyles.css" />
     <EmbeddedResource Include="Integrations\Overlay\Assets\chat-overlay.html" />
-    <EmbeddedResource Include="Integrations\Spotify\Assets\spotify-login.html" />
-    <EmbeddedResource Include="Integrations\Spotify\Assets\spotify-settings.html" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="EmbedIO" Version="3.5.2" />
-    <PackageReference Include="RazorLight" Version="2.3.1" />
     <PackageReference Include="Costura.Fody" Version="6.2.0" PrivateAssets="all" />
     <PackageReference Include="Fody" Version="6.9.3" PrivateAssets="all">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

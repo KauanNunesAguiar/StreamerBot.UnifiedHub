@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.Bridge
 {
     /// <summary>
     /// Ponto único e estático para registrar a ponte com o Streamer.bot (IStreamerBotBridge).

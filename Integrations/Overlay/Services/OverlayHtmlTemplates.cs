@@ -1,6 +1,6 @@
 using System.Net;
 using System.Text;
-using StreamerBot.UnifiedHub.Core.Services;
+using StreamerBot.UnifiedHub.Core.Services.Html;
 using StreamerBot.UnifiedHub.Integrations.Overlay.Models;
 
 namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services

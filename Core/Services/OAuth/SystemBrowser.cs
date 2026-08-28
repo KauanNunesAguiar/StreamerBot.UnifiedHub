@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using StreamerBot.UnifiedHub.Core.Abstractions;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.OAuth
 {
     public class SystemBrowser : IBrowserService
     {

@@ -5,7 +5,7 @@ using StreamerBot.UnifiedHub.Core.Abstractions;
 using StreamerBot.UnifiedHub.Core.Compatibility;
 using StreamerBot.UnifiedHub.Core.Models;
 
-namespace StreamerBot.UnifiedHub.Core.Services
+namespace StreamerBot.UnifiedHub.Core.Services.OAuth
 {
     /// <summary>
     /// Fluxo leve que abre o navegador direto na tela de configurações pós-auth
