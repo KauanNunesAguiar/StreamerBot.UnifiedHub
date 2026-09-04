@@ -30,7 +30,6 @@ public class CPHInline
 		if (!result.Success)
 		{
 			CPH.LogError($"[Spotify] {result.Message}");
-			CPH.SendMessage(result.Message);
 		}
 
 		return result.Success;

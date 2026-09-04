@@ -31,6 +31,11 @@ namespace StreamerBot.UnifiedHub.Core.Services.Http
                 client.Timeout = TimeSpan.FromSeconds(15);
             });
 
+            services.AddHttpClient("Overlay", client =>
+            {
+                client.Timeout = TimeSpan.FromSeconds(10);
+            });
+
             return services.BuildServiceProvider();
         }
 

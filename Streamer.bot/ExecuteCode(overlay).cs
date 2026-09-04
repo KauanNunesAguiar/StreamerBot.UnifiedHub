@@ -11,7 +11,6 @@ public class CPHInline
         if (!result.Success)
         {
             CPH.LogError($"[Overlay] {result.Message}");
-            CPH.SendMessage(result.Message);
         }
 
         return result.Success;
@@ -40,15 +39,23 @@ public class CPHInline
 
         CPH.TryGetArg("userName", out string userName);
         CPH.TryGetArg("broadcastUserName", out string broadcastUserName);
+        CPH.TryGetArg("broadcastUserId", out string broadcastUserId);
+        CPH.TryGetArg("badges", out string badges);
+
+        foreach (var kv in args)
+            CPH.LogInfo($"[OverlayDebug] {kv.Key} = {kv.Value}");
+
         bool isBroadcaster = !string.IsNullOrEmpty(userName) && string.Equals(userName, broadcastUserName, StringComparison.OrdinalIgnoreCase);
 
         string emotes = BuildEmotesString();
 
-        return Report(ChatOverlayHub.PushTwitchMessage(
+        return Report(ChatOverlayHub.PushTwitchMessageAsync(
             user ?? "", message ?? "",
             string.IsNullOrEmpty(color) ? null : color,
             string.IsNullOrEmpty(emotes) ? null : emotes,
-            isBroadcaster, isModerator, isVip, isSubscribed));
+            string.IsNullOrEmpty(badges) ? null : badges,
+            string.IsNullOrEmpty(broadcastUserId) ? null : broadcastUserId,
+            isBroadcaster, isModerator, isVip, isSubscribed).GetAwaiter().GetResult());
     }
 
     private string BuildEmotesString()

@@ -53,18 +53,20 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Hubs
             _isInitialized = false;
         }
 
-        public static HubResult PushTwitchMessage(
+        public static Task<HubResult> PushTwitchMessageAsync(
             string user, string message, string? color = null, string? emotes = null,
-            bool isBroadcaster = false, bool isModerator = false, bool isVip = false, bool isSubscriber = false)
-                => Push("twitch", user, message, color, emotes, isBroadcaster, isModerator, isVip, isSubscriber);
+            string? badges = null, string? broadcasterId = null,
+            bool isBroadcaster = false, bool isModerator = false, bool isVip = false, bool isSubscriber = false,
+            CancellationToken cancellationToken = default)
+        => _executor.ExecuteAsync(async () =>
+        {
+            var badgeUrls = await TwitchBadgeCache.ResolveBadgeUrlsAsync(badges, broadcasterId, cancellationToken);
+            _server.PushChatMessage(new ChatOverlayMessage("twitch", user, message, color, emotes, isBroadcaster, isModerator, isVip, isSubscriber, DateTime.UtcNow, badgeUrls));
+        }, "Mensagem enviada ao overlay.", "enviar mensagem ao overlay");
 
         public static HubResult PushYoutubeMessage(string user, string message, string? color = null)
-            => Push("youtube", user, message, color, null, false, false, false, false);
-
-        private static HubResult Push(string platform, string user, string message, string? color, string? emotes,
-            bool isBroadcaster, bool isModerator, bool isVip, bool isSubscriber)
             => _executor.Execute(
-                () => _server.PushChatMessage(new ChatOverlayMessage(platform, user, message, color, emotes, isBroadcaster, isModerator, isVip, isSubscriber, DateTime.UtcNow)),
+                () => _server.PushChatMessage(new ChatOverlayMessage("youtube", user, message, color, null, false, false, false, false, DateTime.UtcNow)),
                 "Mensagem enviada ao overlay.",
                 "enviar mensagem ao overlay");
 

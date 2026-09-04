@@ -15,7 +15,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             overflow: hidden;
         }
-
+        
         #chat {
             display: flex;
             flex-direction: column;
@@ -25,7 +25,7 @@
             height: 100vh;
             box-sizing: border-box;
         }
-
+        
         .msg {
             display: flex;
             align-items: baseline;
@@ -38,17 +38,22 @@
             max-width: fit-content;
             animation: slide-in 0.25s ease-out;
         }
-
+        
+        .msg .badge-icon {
+            vertical-align: middle;
+            margin-right: 2px;
+        }
+        
         body.mode-permanent .msg {
             background: rgba(18, 18, 18, 0.75);
         }
-
+        
         .msg .platform-icon {
             display: flex;
             align-items: center;
             flex-shrink: 0;
         }
-
+        
         .msg .badge {
             font-weight: 700;
             color: #fff;
@@ -56,37 +61,35 @@
             border-radius: 3px;
             flex-shrink: 0;
         }
-
+        
         .msg .emote {
             vertical-align: middle;
             margin: 0 2px;
         }
-
+        
         .msg .user {
             font-weight: 700;
         }
-
+        
         .msg.fading {
             animation: fade-out 0.6s ease-in forwards;
         }
-
+        
         @keyframes slide-in {
             from {
                 opacity: 0;
                 transform: translateY(8px);
             }
-
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
-
+        
         @keyframes fade-out {
             from {
                 opacity: 1;
             }
-
             to {
                 opacity: 0;
             }
@@ -168,6 +171,13 @@
 
         function renderBadges(data) {
             if (!currentShowBadges) return '';
+
+            if (data.badgeUrls && data.badgeUrls.length > 0) {
+                return data.badgeUrls.map(url =>
+                    `<img class="badge-icon" src="${url}" style="height:${currentBadgeSize}px" alt="">`
+                ).join('');
+            }
+
             let html = '';
             if (data.isBroadcaster) html += badge('BR', '#E91429');
             else if (data.isModerator) html += badge('MOD', '#00AD03');

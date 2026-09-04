@@ -100,7 +100,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Services
                 isBroadcaster = message.IsBroadcaster,
                 isModerator = message.IsModerator,
                 isVip = message.IsVip,
-                isSubscriber = message.IsSubscriber
+                isSubscriber = message.IsSubscriber,
+                badgeUrls = message.BadgeUrls
             });
 
         private object BuildStatePayload() => new

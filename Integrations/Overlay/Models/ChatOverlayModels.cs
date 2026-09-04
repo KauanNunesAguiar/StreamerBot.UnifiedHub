@@ -16,7 +16,8 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Models
     bool IsModerator,
     bool IsVip,
     bool IsSubscriber,
-    DateTime Timestamp);
+    DateTime Timestamp,
+    IReadOnlyList<string>? BadgeUrls = null);
 
     public class OverlaySettingsViewModel
     {
