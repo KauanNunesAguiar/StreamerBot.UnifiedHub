@@ -1,0 +1,113 @@
+﻿StreamerBot.UnifiedHub
+|-- Core
+|   |-- Abstractions
+|   |   |-- IBrowserService.cs
+|   |   |-- IConfigManager.cs
+|   |   |-- ILocalHttpServer.cs
+|   |   |-- IOAuthFlowStrategy.cs
+|   |   +-- IStreamerBotBridge.cs
+|   |-- Assets
+|   |   |-- ChatSettingsStyles.css
+|   |   +-- SharedStyles.css
+|   |-- Compatibility
+|   |   |-- IsExternalInit.cs
+|   |   +-- NetStandardPolyfills.cs
+|   |-- Extensions
+|   |   +-- AppConfigExtensions.cs
+|   |-- Models
+|   |   |-- AppConfig.cs
+|   |   |-- ChatIntegrationConfig.cs
+|   |   |-- ChatMessageEventArgs.cs
+|   |   |-- HubCommandInfo.cs
+|   |   |-- HubResult.cs
+|   |   |-- MessageDefinition.cs
+|   |   |-- MessageInputViewModel.cs
+|   |   |-- OAuthConfig.cs
+|   |   |-- OAuthLoginViewModel.cs
+|   |   +-- OAuthResult.cs
+|   +-- Services
+|       |-- Bridge
+|       |   +-- StreamerBotContext.cs
+|       |-- Chat
+|       |   |-- ChatIntegrationConfigMapper.cs
+|       |   |-- ChatMessageDispatcher.cs
+|       |   |-- ChatMessageFormatter.cs
+|       |   +-- CommandHelpTextBuilder.cs
+|       |-- Config
+|       |   +-- ConfigManager.cs
+|       |-- Execution
+|       |   +-- HubExecutionHelper.cs
+|       |-- Html
+|       |   |-- EmbeddedResourceReader.cs
+|       |   |-- HtmlComponents.cs
+|       |   +-- HtmlPageShell.cs
+|       |-- Http
+|       |   |-- HubServiceProvider.cs
+|       |   +-- YouTubeOEmbedLookup.cs
+|       +-- OAuth
+|           |-- EmbedIoHttpServer.cs
+|           |-- OAuthFlowHandler.cs
+|           |-- OAuthHandler.cs
+|           |-- SettingsOnlyFlowHandler.cs
+|           +-- SystemBrowser.cs
+|-- docs
+|   +-- ARCHITECTURE.md
+|-- Integrations
+|   |-- Overlay
+|   |   |-- Assets
+|   |   |   +-- chat-overlay.html
+|   |   |-- Extensions
+|   |   |   +-- OverlayAppConfigExtensions.cs
+|   |   |-- Hubs
+|   |   |   +-- ChatOverlayHub.cs
+|   |   |-- Models
+|   |   |   |-- ChatOverlayAnimationSettings.cs
+|   |   |   |-- ChatOverlayBackgroundAppearance.cs
+|   |   |   |-- ChatOverlayBoxAppearance.cs
+|   |   |   |-- ChatOverlayConfig.cs
+|   |   |   |-- ChatOverlayModels.cs
+|   |   |   |-- ChatOverlayProfile.cs
+|   |   |   |-- ChatOverlayProfilesConfig.cs
+|   |   |   |-- ChatOverlayTextAppearance.cs
+|   |   |   +-- ChatOverlayVisibilityRules.cs
+|   |   +-- Services
+|   |       |-- ChatSocketModule.cs
+|   |       |-- OverlayHtmlTemplates.cs
+|   |       |-- OverlayWebSocketServer.cs
+|   |       +-- TwitchBadgeCache.cs
+|   |-- Spotify
+|   |   |-- Extensions
+|   |   |   +-- SpotifyAppConfigExtensions.cs
+|   |   |-- Hubs
+|   |   |   +-- SpotifyHub.cs
+|   |   |-- Models
+|   |   |   |-- SpotifyConfig.cs
+|   |   |   |-- SpotifyMessageCatalog.cs
+|   |   |   |-- SpotifyPlaylistInfo.cs
+|   |   |   |-- SpotifySettingsSnapshot.cs
+|   |   |   |-- SpotifySettingsViewModel.cs
+|   |   |   |-- SpotifyTrackInfo.cs
+|   |   |   +-- VoteSkipResult.cs
+|   |   +-- Services
+|   |       |-- SpotifyAuthService.cs
+|   |       |-- SpotifyHtmlTemplates.cs
+|   |       |-- SpotifyManager.cs
+|   |       |-- SpotifyOAuthHandler.cs
+|   |       |-- SpotifyOAuthStrategy.cs
+|   |       +-- SpotifyPlayerService.cs
+|   |-- Veadotube
+|   +-- Youtube
+|-- scripts
+|   |-- GenerateFileTree.ps1
+|   +-- GenerateModuleReferences.ps1
+|-- Streamer.bot
+|   |-- ExecuteCode(overlay).cs
+|   |-- ExecuteCode(spotify).cs
+|   +-- Export.txt
+|-- .gitattributes
+|-- .gitignore
+|-- defaultconfig.json
+|-- FodyWeavers.xml
+|-- FodyWeavers.xsd
+|-- Program.Example.cs
++-- StreamerBot.UnifiedHub.csproj

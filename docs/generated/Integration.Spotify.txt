@@ -1,0 +1,175 @@
+﻿# Integration: Spotify
+
+=== Integrations\Spotify\Models\SpotifyConfig.cs ===
+  public class SpotifyConfig : ChatIntegrationConfig
+    public string PlaylistId { get; set; } = string.Empty;
+    public int VoteSkipThreshold { get; set; } = 3;
+    public int QueueSize { get; set; } = 5;
+    public override string ToString()
+
+=== Integrations\Spotify\Models\SpotifyMessageCatalog.cs ===
+  public static class SpotifyMessageCatalog
+  public static class Keys
+    public static List<MessageDefinition> Definitions { get; } =
+
+=== Integrations\Spotify\Models\SpotifyPlaylistInfo.cs ===
+  public class SpotifyPlaylistInfo
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
+    public int TracksTotal { get; set; }
+
+=== Integrations\Spotify\Models\SpotifySettingsSnapshot.cs ===
+  public record SpotifySettingsSnapshot( string PlaylistId, int VoteSkipThreshold, int QueueSize, string BotLabel, int PollingIntervalMs);
+
+=== Integrations\Spotify\Models\SpotifySettingsViewModel.cs ===
+  public class SpotifySettingsViewModel
+    public string? Error { get; set; }
+    public List<SpotifyPlaylistInfo> Playlists { get; set; } = [];
+    public string SelectedPlaylistId { get; set; } = string.Empty;
+    public int VoteSkipThreshold { get; set; } = 3;
+    public int QueueSize { get; set; } = 5;
+    public string BotLabel { get; set; } = "Spotify";
+    public int PollingIntervalMs { get; set; } = 5000;
+    public List<MessageInputViewModel> Messages { get; set; } = [];
+
+=== Integrations\Spotify\Models\SpotifyTrackInfo.cs ===
+  public class SpotifyTrackInfo
+    public SpotifyIdentifiers Identifiers { get; set; } = new();
+    public SpotifyMediaDetails Media { get; set; } = new();
+    public SpotifyPlayerState Player { get; set; } = new();
+    public SpotifyRequestInfo Request { get; set; } = new();
+  public class SpotifyIdentifiers
+    public string Id { get; set; } = string.Empty;
+    public string Uri { get; set; } = string.Empty;
+    public string Url { get; set; } = string.Empty;
+  public class SpotifyMediaDetails
+    public string Title { get; set; } = string.Empty;
+    public string Artist { get; set; } = string.Empty; // Nomes concatenados (ex: "Artista 1, Artista 2")
+    public string Album { get; set; } = string.Empty;
+    public string AlbumArtUrl { get; set; } = string.Empty;
+    public bool IsExplicit { get; set; }
+  public class SpotifyPlayerState
+    public bool IsPlaying { get; set; }
+    public long ProgressMs { get; set; }
+    public long DurationMs { get; set; }
+  public class SpotifyRequestInfo
+    public string UserId { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public DateTime RequestedAt { get; set; } = DateTime.UtcNow;
+
+=== Integrations\Spotify\Models\VoteSkipResult.cs ===
+  public record VoteSkipResult(bool Accepted, string Message, int CurrentVotes, int RequiredVotes, bool Skipped, bool AlreadyVoted = false);
+
+=== Integrations\Spotify\Extensions\SpotifyAppConfigExtensions.cs ===
+  public static class SpotifyAppConfigExtensions
+    public static SpotifyConfig GetSpotifyConfig(this AppConfig appConfig)
+    public static void SetSpotifyConfig(this AppConfig appConfig, SpotifyConfig config)
+
+=== Integrations\Spotify\Services\SpotifyAuthService.cs ===
+  public class SpotifyAuthService
+    public static async Task<SpotifyClient> EnsureAuthenticatedAsync( SpotifyConfig config, SpotifyOAuthHandler oauthHandler, IConfigManager? configManager = null, CancellationToken cancellationToken = default)
+    public static async Task<SpotifyClient> ReconfigureAsync( SpotifyConfig config, SpotifyOAuthHandler oauthHandler, IConfigManager? configManager = null, CancellationToken cancellationToken = default)
+    public static async Task<SpotifyClient> CreateClientAsync( SpotifyConfig config, IConfigManager? configManager = null, CancellationToken cancellationToken = default)
+    public static async Task<SpotifyClient> CreateClientFromRefreshTokenAsync( string clientId, string clientSecret, string refreshToken, CancellationToken cancellationToken = default)
+    public static async Task<string> ExchangeCodeForRefreshTokenAsync( string clientId, string clientSecret, string code, string redirectUri, CancellationToken cancellationToken = default)
+    public static void ApplyExtraSettingsToConfig(SpotifyConfig config, IReadOnlyDictionary<string, string> extra)
+
+=== Integrations\Spotify\Services\SpotifyHtmlTemplates.cs ===
+  public static class SpotifyHtmlTemplates
+    public static string RenderLogin(OAuthLoginViewModel model)
+    public static string RenderSettings(SpotifySettingsViewModel model)
+
+=== Integrations\Spotify\Services\SpotifyManager.cs ===
+  public class SpotifyManager( SpotifyOAuthHandler oauthHandler, SpotifyPlayerService playerService, SpotifyConfig config, IConfigManager? configManager = null) : IDisposable
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task ReconfigureAsync(CancellationToken cancellationToken = default)
+    public async Task<HubResult> OpenSettingsUiAsync(CancellationToken cancellationToken = default)
+    public Task StartPollingAsync(int intervalMilliseconds = 5000, CancellationToken cancellationToken = default)
+    public async Task<SpotifyTrackInfo> GetCurrentTrackAsync(CancellationToken cancellationToken = default)
+    public async Task PauseAsync(string user = "", CancellationToken cancellationToken = default)
+    public async Task ResumeAsync(string user = "", CancellationToken cancellationToken = default)
+    public async Task SetVolumeAsync(int volumePercent, string user = "", CancellationToken cancellationToken = default)
+    public string GetCurrentTrackProgressBar() => _playerService.GetCurrentTrackProgressBar();
+    public async Task<List<SpotifyTrackInfo>> GetQueueAsync(int? limit = null, CancellationToken cancellationToken = default)
+    public async Task<SpotifyTrackInfo> AddToQueueAsync(string input, string userId, string userName, CancellationToken cancellationToken = default)
+    public List<SpotifyTrackInfo> GetPendingUserQueue()
+    public Task ShowPlaylistInfoAsync(CancellationToken cancellationToken = default)
+    public HubResult UpdateSettings(Action<SpotifyConfig> mutate)
+    public SpotifySettingsSnapshot GetSettingsSnapshot() => new( _config.PlaylistId, _config.VoteSkipThreshold, _config.QueueSize, _config.BotLabel, _config.PollingIntervalMs);
+    public async Task SkipToPreviousAsync(string user = "", CancellationToken cancellationToken = default)
+    public async Task<VoteSkipResult> VoteSkipAsync(string user, string userId, CancellationToken cancellationToken = default)
+    public void NotifyNoPermission(string user = "")
+    public void NotifyCooldown(string user = "")
+    public void ShowHelp(string user = "", string listaComandos = "")
+    public void Dispose()
+
+=== Integrations\Spotify\Services\SpotifyOAuthHandler.cs ===
+  public class SpotifyOAuthHandler( ILocalHttpServer httpServer, IBrowserService browserService, IConfigManager? configManager = null)
+    public async Task<OAuthResult> AuthenticateUserAsync( SpotifyConfig config, CancellationToken cancellationToken = default)
+    public async Task<OAuthResult?> OpenSettingsAsync(SpotifyConfig config, CancellationToken cancellationToken = default)
+
+=== Integrations\Spotify\Services\SpotifyOAuthStrategy.cs ===
+  public class SpotifyOAuthStrategy(SpotifyConfig? spotifyConfig = null, IConfigManager? configManager = null) : IOAuthFlowStrategy
+    public string BuildAuthorizationUrl(string clientId, string redirectUri)
+    public async Task<string> ExchangeCodeForRefreshTokenAsync(string clientId, string clientSecret, string code, string redirectUri)
+    public string BuildExchangeErrorMessage(Exception ex) =>
+    public Task<string> RenderFormHtml(string clientId, string clientSecret, string? erro)
+    public async Task<bool> ValidateCredentialsAsync(string clientId, string clientSecret, CancellationToken cancellationToken = default)
+    public async Task<string> RenderPostAuthStepHtmlAsync(OAuthResult result, string? error, CancellationToken cancellationToken)
+    public Task<string?> ProcessPostAuthStepAsync(OAuthResult result, string formBody, CancellationToken cancellationToken)
+
+=== Integrations\Spotify\Services\SpotifyPlayerService.cs ===
+  public class SpotifyPlayerService(YouTubeOEmbedLookup youTubeService) : IDisposable
+    public SpotifyTrackInfo CurrentTrackInfo { get; private set; } = new SpotifyTrackInfo();
+    public event EventHandler<SpotifyTrackInfo>? OnTrackChanged;
+    public event EventHandler<SpotifyTrackInfo>? OnPlayerUpdated;
+    public void SetClient(SpotifyClient spotifyClient)
+    public async Task StartPollingAsync(int intervalMilliseconds = 5000, CancellationToken cancellationToken = default)
+    public async Task<SpotifyTrackInfo> GetCurrentTrackAsync(CancellationToken cancellationToken = default)
+    public async Task PauseAsync(CancellationToken cancellationToken = default)
+    public async Task ResumeAsync(CancellationToken cancellationToken = default)
+    public async Task SkipToPreviousAsync(CancellationToken cancellationToken = default)
+    public async Task SetVolumeAsync(int volumePercent, CancellationToken cancellationToken = default)
+    public string GetCurrentTrackProgressBar()
+    public async Task<VoteSkipResult> RegisterVoteSkipAsync(string userId, int requiredVotes, CancellationToken cancellationToken = default)
+    public async Task<List<SpotifyTrackInfo>> GetQueueAsync(int limit = 5, CancellationToken cancellationToken = default)
+    public async Task<SpotifyTrackInfo> AddToQueueAsync(string input, string userId, string userName, CancellationToken cancellationToken = default)
+    public List<SpotifyTrackInfo> GetPendingUserQueue()
+    public void Dispose()
+
+=== Integrations\Spotify\Hubs\SpotifyHub.cs ===
+  public static class SpotifyHub
+    public static event EventHandler<SpotifyTrackInfo>? OnTrackChanged;
+    public static event EventHandler<SpotifyTrackInfo>? OnPlayerUpdated;
+    public static event EventHandler<ChatMessageEventArgs>? OnChatMessage;
+    public static async Task<HubResult> InitializeAsync(int? pollingIntervalMs = null, CancellationToken cancellationToken = default)
+    public static Task<HubResult> ReconfigureAsync(CancellationToken cancellationToken = default)
+    public static Task<HubResult> OpenSettingsUiAsync(CancellationToken cancellationToken = default)
+    public static void SetCommandProvider(Func<IEnumerable<HubCommandInfo>> provider)
+    public static HubResult GetSettings()
+    public static HubResult SetVoteSkipThreshold(int threshold)
+    public static HubResult SetQueueSize(int size)
+    public static HubResult SetPollingIntervalMs(int intervalMs)
+    public static HubResult SetBotLabel(string BotLabel)
+    public static HubResult SetMessageEnabled(string key, bool enabled)
+    public static HubResult SetMessageTemplate(string key, string template)
+    public static Task<HubResult> PauseAsync(string user = "", CancellationToken cancellationToken = default)
+    public static Task<HubResult> ResumeAsync(string user = "", CancellationToken cancellationToken = default)
+    public static Task<HubResult> PreviousAsync(string user = "", CancellationToken cancellationToken = default)
+    public static Task<HubResult> SetVolumeAsync(int volumePercent, string user = "", CancellationToken cancellationToken = default)
+    public static HubResult GetProgressBar()
+    public static Task<HubResult> GetCurrentTrackAsync(CancellationToken cancellationToken = default)
+    public static Task<HubResult> GetQueueAsync(int? limit = null, CancellationToken cancellationToken = default)
+    public static Task<HubResult> AddToQueueAsync(string input, string userId, string userName, CancellationToken cancellationToken = default)
+    public static Task<HubResult> RemoveLastAddedFromQueueAsync(string userId, CancellationToken cancellationToken = default)
+    public static HubResult GetPendingUserQueue()
+    public static Task<HubResult> ShowPlaylistInfoAsync(CancellationToken cancellationToken = default)
+    public static Task<HubResult> AddCurrentTrackToPlaylistAsync(string user = "", CancellationToken cancellationToken = default)
+    public static Task<HubResult> ForceSkipAsync(string user = "", CancellationToken cancellationToken = default)
+    public static Task<HubResult> VoteSkipAsync(string user, string userId, CancellationToken cancellationToken = default)
+    public static Task<HubResult> NotifyNoPermissionAsync(string user = "", CancellationToken cancellationToken = default)
+    public static Task<HubResult> NotifyCooldownAsync(string user = "", CancellationToken cancellationToken = default)
+    public static Task<HubResult> ShowSongHelpAsync(string user = "", CancellationToken cancellationToken = default)
+    public static void Shutdown()
+

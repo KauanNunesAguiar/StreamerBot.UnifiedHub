@@ -1,0 +1,192 @@
+﻿# Core
+
+=== Core\Models\AppConfig.cs ===
+  public class AppConfig
+    public string Environment { get; set; } = "Development";
+    public bool EnableLogging { get; set; } = true;
+    public Dictionary<string, object> IntegrationSettings { get; set; } = new();
+    public override string ToString()
+
+=== Core\Models\ChatIntegrationConfig.cs ===
+  public class ChatIntegrationConfig : OAuthConfig
+    public string BotLabel { get; set; } = string.Empty;
+    public int PollingIntervalMs { get; set; } = 5000;
+    public Dictionary<string, string> Messages { get; set; } = [];
+    public Dictionary<string, bool> MessageEnabled { get; set; } = [];
+
+=== Core\Models\ChatMessageEventArgs.cs ===
+  public class ChatMessageEventArgs(string BotLabel, string message) : EventArgs
+    public string BotLabel { get; } = BotLabel;
+    public string Message { get; } = message;
+
+=== Core\Models\HubCommandInfo.cs ===
+  public record HubCommandInfo(string Name, IReadOnlyList<string> Commands, bool Enabled);
+
+=== Core\Models\HubResult.cs ===
+  public readonly record struct HubResult(bool Success, string Message, string? Data = null)
+    public static HubResult Ok(string message) => new(true, message);
+    public static HubResult Ok(object data, string message) => new(true, message, JsonConvert.SerializeObject(data));
+    public static HubResult Fail(string message) => new(false, message);
+
+=== Core\Models\MessageDefinition.cs ===
+  public class MessageDefinition
+    public string Key { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public List<string> Placeholders { get; set; } = [];
+    public bool Enabled { get; set; } = true;
+
+=== Core\Models\MessageInputViewModel.cs ===
+  public class MessageInputViewModel
+    public MessageDefinition Definition { get; set; } = new();
+    public string Value { get; set; } = string.Empty;
+
+=== Core\Models\OAuthConfig.cs ===
+  public class OAuthConfig
+    public string ClientId { get; set; } = string.Empty;
+    public string ClientSecret { get; set; } = string.Empty;
+    public string RedirectUri { get; set; } = "http://127.0.0.1:5000/callback/";
+    public string AccessToken { get; set; } = string.Empty;
+    public string RefreshToken { get; set; } = string.Empty;
+    public DateTime TokenExpiration { get; set; }
+
+=== Core\Models\OAuthLoginViewModel.cs ===
+  public class OAuthLoginViewModel
+    public string ClientId { get; set; } = string.Empty;
+    public string ClientSecret { get; set; } = string.Empty;
+    public string? Error { get; set; }
+
+=== Core\Models\OAuthResult.cs ===
+  public class OAuthResult
+    public string ClientId { get; set; } = string.Empty;
+    public string ClientSecret { get; set; } = string.Empty;
+    public string RefreshToken { get; set; } = string.Empty;
+    public Dictionary<string, string> ExtraSettings { get; set; } = [];
+
+=== Core\Abstractions\IBrowserService.cs ===
+
+=== Core\Abstractions\IConfigManager.cs ===
+
+=== Core\Abstractions\ILocalHttpServer.cs ===
+  public class HttpListenerContextWrapper
+    public string Method { get; set; } = string.Empty;
+    public string RawUrl { get; set; } = string.Empty;
+    public string Body { get; set; } = string.Empty;
+    public Action<string, string> RespondHtml { get; set; } = (html, contentType) => { };
+    public Action<int> RespondStatusCode { get; set; } = statusCode => { };
+    public Action<string> Redirect { get; set; } = url => { };
+
+=== Core\Abstractions\IOAuthFlowStrategy.cs ===
+
+=== Core\Abstractions\IStreamerBotBridge.cs ===
+
+=== Core\Extensions\AppConfigExtensions.cs ===
+  public static class AppConfigExtensions
+    public static T GetIntegrationConfig<T>(this AppConfig appConfig, string key) where T : class, new()
+    public static void SetIntegrationConfig<T>(this AppConfig appConfig, string key, T config) where T : class
+
+=== Core\Services\Bridge\StreamerBotContext.cs ===
+  public static class StreamerBotContext
+    public static void Connect(IStreamerBotBridge bridge) => _bridge = bridge;
+    public static void SendMessage(string message, bool bot = true)
+    public static string? GetGlobalVar(string name, bool persisted = true)
+    public static void SetGlobalVar(string name, object value, bool persisted = true)
+
+=== Core\Services\Chat\ChatIntegrationConfigMapper.cs ===
+  public static class ChatIntegrationConfigMapper
+    public static void ApplyExtraSettings(ChatIntegrationConfig config, IReadOnlyDictionary<string, string> extra)
+
+=== Core\Services\Chat\ChatMessageDispatcher.cs ===
+  public class ChatMessageDispatcher(ChatIntegrationConfig config)
+    public event EventHandler<ChatMessageEventArgs>? OnChatMessage;
+    public void Raise(string key, Dictionary<string, string>? placeholders = null)
+
+=== Core\Services\Chat\ChatMessageFormatter.cs ===
+  public static class ChatMessageFormatter
+    public static string Format(string template, IDictionary<string, string> values)
+
+=== Core\Services\Chat\CommandHelpTextBuilder.cs ===
+  public static class CommandHelpTextBuilder
+    public static string Build(IEnumerable<MessageDefinition> definitions, IEnumerable<HubCommandInfo> commands)
+
+=== Core\Services\Config\ConfigManager.cs ===
+  public class ConfigManager : IConfigManager
+    public AppConfig Load()
+    public void Save(AppConfig config)
+
+=== Core\Services\Execution\HubExecutionHelper.cs ===
+  public class HubExecutionHelper(Func<bool> isReady, string notInitializedMessage)
+    public async Task<HubResult> ExecuteAsync(Func<Task> action, string successMessage, string acao)
+    public async Task<HubResult> ExecuteAsync<T>(Func<Task<T>> action, string successMessage, string acao)
+    public async Task<HubResult> ExecuteAsync<T>(Func<Task<(T Data, string Message)>> action, string acao)
+    public async Task<HubResult> ExecuteAsync(Func<Task<HubResult>> action, string acao)
+    public HubResult Execute(Action action, string successMessage, string acao)
+    public HubResult Execute<T>(Func<T> action, string successMessage, string acao)
+
+=== Core\Services\Html\EmbeddedResourceReader.cs ===
+  public static class EmbeddedResourceReader
+    public static string ReadText(string resourceName)
+
+=== Core\Services\Html\HtmlComponents.cs ===
+  public static class HtmlComponents
+    public static string E(string? value) => WebUtility.HtmlEncode(value ?? string.Empty);
+    public static string SectionTitle(string text)
+    public static string FormGroup(string labelFor, string labelText, string inputHtml, string? hint = null)
+    public static string ToggleSwitch(string name, bool isChecked, string onChangeJs = "", string enabledLabel = "Habilitado", string disabledLabel = "Desabilitado")
+    public static string SubmitButton(string text)
+    public static string CancelLink(string href, string text)
+    public static string TwoColumnGrid(string leftColumnHtml, string rightColumnHtml, bool stickyRight = false)
+
+=== Core\Services\Html\HtmlPageShell.cs ===
+  public class PageShellOptions
+    public string Title { get; set; } = string.Empty;
+    public string LogoIcon { get; set; } = "âš™ï¸";
+    public string HeaderTitle { get; set; } = string.Empty;
+    public string HeaderSubtitle { get; set; } = string.Empty;
+    public bool Wide { get; set; } = false;
+    public string? Error { get; set; }
+    public string? Success { get; set; }
+    public string ExtraCss { get; set; } = string.Empty;
+    public string ExtraScript { get; set; } = string.Empty;
+  public static class HtmlPageShell
+    public static string Render(PageShellOptions options, string bodyHtml)
+
+=== Core\Services\Http\HubServiceProvider.cs ===
+  public static class HubServiceProvider
+    public static HttpClient GetHttpClient(string integrationName)
+
+=== Core\Services\Http\YouTubeOEmbedLookup.cs ===
+  public class YouTubeOEmbedLookup(HttpClient httpClient)
+    public async Task<string?> GetVideoTitleAsync(string youtubeUrl, CancellationToken cancellationToken = default)
+
+=== Core\Services\OAuth\EmbedIoHttpServer.cs ===
+  public class EmbedIoHttpServer : ILocalHttpServer
+    public void Start(string redirectUri)
+    public void Stop()
+    public async Task<HttpListenerContextWrapper> WaitForRequestAsync(CancellationToken cancellationToken = default)
+
+=== Core\Services\OAuth\OAuthFlowHandler.cs ===
+  public class OAuthFlowHandler( ILocalHttpServer httpServer, IBrowserService browserService, IOAuthFlowStrategy strategy)
+    public async Task<OAuthResult> RunAsync( string clientId, string clientSecret, string redirectUri, CancellationToken cancellationToken = default)
+
+=== Core\Services\OAuth\OAuthHandler.cs ===
+  public class OAuthHandler(ILocalHttpServer httpServer, IBrowserService browserService)
+    public async Task<OAuthResult> AuthenticateUserAsync( IOAuthFlowStrategy strategy, string clientId, string clientSecret, string redirectUri, CancellationToken cancellationToken = default)
+    public async Task<OAuthResult?> OpenSettingsAsync( IOAuthFlowStrategy strategy, OAuthResult current, string redirectUri, CancellationToken cancellationToken = default)
+
+=== Core\Services\OAuth\SettingsOnlyFlowHandler.cs ===
+  public class SettingsOnlyFlowHandler( ILocalHttpServer httpServer, IBrowserService browserService, IOAuthFlowStrategy strategy)
+    public async Task<OAuthResult?> RunAsync(OAuthResult current, string redirectUri, CancellationToken cancellationToken = default)
+
+=== Core\Services\OAuth\SystemBrowser.cs ===
+  public class SystemBrowser : IBrowserService
+    public bool OpenUrl(string url)
+
+=== Core\Compatibility\IsExternalInit.cs ===
+  internal static class IsExternalInit { }
+
+=== Core\Compatibility\NetStandardPolyfills.cs ===
+  public static class NetStandardPolyfills
+    public static bool Contains(this string source, string value, StringComparison comparison)
+    public static string Replace(this string source, string oldValue, string newValue, StringComparison comparison)
+

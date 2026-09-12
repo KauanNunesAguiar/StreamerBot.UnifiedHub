@@ -1,0 +1,141 @@
+﻿# Integration: Overlay
+
+=== Integrations\Overlay\Models\ChatOverlayAnimationSettings.cs ===
+  public enum ChatOverlayEntranceAnimation { None, SlideIn, FadeIn }
+  public enum ChatOverlayExitAnimation { None, FadeOut, SlideOut }
+  public class ChatOverlayAnimationSettings
+    public ChatOverlayEntranceAnimation Entrance { get; set; } = ChatOverlayEntranceAnimation.SlideIn;
+    public ChatOverlayExitAnimation Exit { get; set; } = ChatOverlayExitAnimation.FadeOut;
+    public int AnimationDurationMs { get; set; } = 250;
+
+=== Integrations\Overlay\Models\ChatOverlayBackgroundAppearance.cs ===
+  public class ChatOverlayBackgroundAppearance
+    public bool Enabled { get; set; } = false;
+    public string Color { get; set; } = "#000000";
+    public int OpacityPercent { get; set; } = 0;
+    public int BorderRadiusPx { get; set; } = 0;
+
+=== Integrations\Overlay\Models\ChatOverlayBoxAppearance.cs ===
+  public class ChatOverlayBoxAppearance
+    public string BackgroundColor { get; set; } = "#121212";
+    public int BackgroundOpacityPercent { get; set; } = 55;
+    public int BorderRadiusPx { get; set; } = 8;
+    public int PaddingPx { get; set; } = 6;
+    public bool BorderEnabled { get; set; } = false;
+    public string BorderColor { get; set; } = "#333333";
+    public int BorderWidthPx { get; set; } = 1;
+
+=== Integrations\Overlay\Models\ChatOverlayConfig.cs ===
+  public class ChatOverlayConfig
+    public int Port { get; set; } = 8081;
+    public string Endpoint { get; set; } = "/ws";
+    public int MaxMessages { get; set; } = 50;
+    public int FadeTimeMs { get; set; } = 12000;
+    public int EmoteSize { get; set; } = 28;
+    public int BadgeSize { get; set; } = 18;
+    public bool ShowBadges { get; set; } = true;
+    public ChatOverlayMode Mode { get; set; } = ChatOverlayMode.FadeOut;
+    public string CustomCss { get; set; } = string.Empty;
+    public override string ToString() => JsonConvert.SerializeObject(this, Formatting.Indented);
+
+=== Integrations\Overlay\Models\ChatOverlayModels.cs ===
+  public enum ChatOverlayMode
+  public record ChatOverlayMessage( string Platform, string UserName, string Message, string? Color, string? Emotes, bool IsBroadcaster, bool IsModerator, bool IsVip, bool IsSubscriber, DateTime Timestamp, IReadOnlyList<string>? BadgeUrls = null);
+  public class OverlaySettingsViewModel
+    public ChatOverlayConfig Config { get; set; } = new();
+    public string? Error { get; set; }
+    public bool Saved { get; set; }
+
+=== Integrations\Overlay\Models\ChatOverlayProfile.cs ===
+  public class ChatOverlayProfile
+    public string Id { get; set; } = Guid.NewGuid().ToString("N");
+    public string Name { get; set; } = "Perfil";
+    public bool Enabled { get; set; } = false;
+    public int Port { get; set; } = 8081;
+    public string Endpoint { get; set; } = "/ws";
+    public int MaxMessages { get; set; } = 50;
+    public int MessageDelayMs { get; set; } = 12000;
+    public ChatOverlayVisibilityRules Visibility { get; set; } = new();
+    public bool ShowTimestamp { get; set; } = false;
+    public bool TopToBottom { get; set; } = false;
+    public ChatOverlayTextAppearance Text { get; set; } = new();
+    public ChatOverlayBoxAppearance Box { get; set; } = new();
+    public ChatOverlayAnimationSettings Animation { get; set; } = new();
+    public ChatOverlayBackgroundAppearance Background { get; set; } = new();
+    public int EmoteSize { get; set; } = 28;
+    public int BadgeSize { get; set; } = 18;
+    public bool ShowBadges { get; set; } = true;
+    public string CustomCss { get; set; } = string.Empty;
+    public override string ToString() => JsonConvert.SerializeObject(this, Formatting.Indented);
+
+=== Integrations\Overlay\Models\ChatOverlayProfilesConfig.cs ===
+  public class ChatOverlayProfilesConfig
+    public Dictionary<string, ChatOverlayProfile> Profiles { get; set; } = [];
+
+=== Integrations\Overlay\Models\ChatOverlayTextAppearance.cs ===
+  public class ChatOverlayTextAppearance
+    public string FontFamily { get; set; } = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+    public int FontSizePx { get; set; } = 18;
+    public string FontWeight { get; set; } = "400";
+    public string TextColor { get; set; } = "#FFFFFF";
+    public bool UseUserColor { get; set; } = true;
+    public bool OutlineEnabled { get; set; } = false;
+    public string OutlineColor { get; set; } = "#000000";
+
+=== Integrations\Overlay\Models\ChatOverlayVisibilityRules.cs ===
+  public class ChatOverlayVisibilityRules
+    public bool ShowMembers { get; set; } = true;
+    public bool ShowNonMembers { get; set; } = true;
+    public bool ShowSubscribers { get; set; } = true;
+    public bool ShowVips { get; set; } = true;
+    public bool ShowMods { get; set; } = true;
+    public bool ShowBots { get; set; } = false;
+    public bool ShowCommands { get; set; } = true;
+    public List<string> CommandPrefixes { get; set; } = ["!"];
+    public bool ShowYoutube { get; set; } = true;
+    public bool ShowTwitch { get; set; } = true;
+
+=== Integrations\Overlay\Extensions\OverlayAppConfigExtensions.cs ===
+  public static class OverlayAppConfigExtensions
+    public static ChatOverlayConfig GetChatOverlayConfig(this AppConfig appConfig)
+    public static void SetChatOverlayConfig(this AppConfig appConfig, ChatOverlayConfig config)
+    public static ChatOverlayProfilesConfig GetChatOverlayProfiles(this AppConfig appConfig)
+    public static void SetChatOverlayProfiles(this AppConfig appConfig, ChatOverlayProfilesConfig config)
+
+=== Integrations\Overlay\Services\ChatSocketModule.cs ===
+  internal class ChatSocketModule : WebSocketModule
+    public Task BroadcastJsonAsync(object payload)
+
+=== Integrations\Overlay\Services\OverlayHtmlTemplates.cs ===
+  public static class OverlayHtmlTemplates
+    public static string RenderSettings(OverlaySettingsViewModel model)
+
+=== Integrations\Overlay\Services\OverlayWebSocketServer.cs ===
+  public class OverlayWebSocketServer
+    public string CustomCss { get; set; } = string.Empty;
+    public void Start(ChatOverlayConfig config, Func<ChatOverlayConfig, Task>? onSettingsSaved = null)
+    public void Stop()
+    public void PushConfigUpdate()
+    public void PushChatMessage(ChatOverlayMessage message)
+
+=== Integrations\Overlay\Services\TwitchBadgeCache.cs ===
+  public static class TwitchBadgeCache
+    public static async Task<List<string>> ResolveBadgeUrlsAsync(string? rawBadges, string? broadcasterId, CancellationToken cancellationToken = default)
+
+=== Integrations\Overlay\Hubs\ChatOverlayHub.cs ===
+  public static class ChatOverlayHub
+    public static HubResult Start(int? port = null)
+    public static void Stop()
+    public static Task<HubResult> PushTwitchMessageAsync( string user, string message, string? color = null, string? emotes = null, string? badges = null, string? broadcasterId = null, bool isBroadcaster = false, bool isModerator = false, bool isVip = false, bool isSubscriber = false, CancellationToken cancellationToken = default)
+    public static HubResult PushYoutubeMessage(string user, string message, string? color = null)
+    public static HubResult SetPort(int port)
+    public static HubResult SetEndpoint(string endpoint)
+    public static HubResult SetMaxMessages(int max)
+    public static HubResult SetFadeTimeMs(int fadeTimeMs)
+    public static HubResult SetEmoteSize(int emoteSize)
+    public static HubResult SetBadgeSize(int badgeSize)
+    public static HubResult SetShowBadges(bool show)
+    public static HubResult SetModeFadeOut()
+    public static HubResult SetModePermanent()
+    public static Task<HubResult> OpenSettingsUiAsync()
+

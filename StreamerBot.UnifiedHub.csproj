@@ -43,9 +43,8 @@
     <Reference Include="System.Web" />
   </ItemGroup>
 
-  <Target Name="CopyTestProgramAsExample" BeforeTargets="BeforeBuild">
-    <Copy SourceFiles="..\StreamerBot.UnifiedHub.TestApp\Program.cs" 
-          DestinationFiles="Program.Example.cs" 
-          SkipUnchangedFiles="true" />
+  <Target Name="GenerateProjectDocs" AfterTargets="Build" Condition="'$(TargetFramework)' == 'net8.0'">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\scripts\GenerateFileTree.ps1&quot; -RootPath &quot;$(MSBuildProjectDirectory)&quot; -OutputPath &quot;$(MSBuildProjectDirectory)\docs\generated\FileTree.txt&quot;" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\scripts\GenerateModuleReferences.ps1&quot; -RootPath &quot;$(MSBuildProjectDirectory)&quot; -OutputDir &quot;$(MSBuildProjectDirectory)\docs\generated&quot;" />
   </Target>
 </Project>
