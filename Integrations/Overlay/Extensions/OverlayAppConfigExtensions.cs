@@ -13,5 +13,11 @@ namespace StreamerBot.UnifiedHub.Integrations.Overlay.Extensions
 
         public static void SetChatOverlayConfig(this AppConfig appConfig, ChatOverlayConfig config)
             => appConfig.SetIntegrationConfig(OverlayKey, config);
+
+        public static ChatOverlayProfilesConfig GetChatOverlayProfiles(this AppConfig appConfig)
+            => appConfig.GetIntegrationConfig<ChatOverlayProfilesConfig>("ChatOverlayProfiles");
+
+        public static void SetChatOverlayProfiles(this AppConfig appConfig, ChatOverlayProfilesConfig config)
+            => appConfig.SetIntegrationConfig("ChatOverlayProfiles", config);
     }
 }
